@@ -12,172 +12,152 @@
 <body>
 <div id="app">
   <div id="wrap">
-    <div id="stage">
+    <canvas id="game" aria-label="Quán Bánh Mì Trà Đá"></canvas>
+    <div id="fx" aria-hidden="true"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
 
-      <!-- Khung cảnh phố: tường vàng, cửa chớp, dây điện, khách -->
-      <div id="scene">
-        <svg class="wires" viewBox="0 0 360 60" aria-hidden="true">
-          <path d="M0 10 Q90 40 180 16 T360 20"/>
-          <path d="M0 24 Q120 54 240 26 T360 34"/>
-          <path d="M0 4 Q70 26 150 8 Q250 46 360 6"/>
-        </svg>
-        <div class="shutter s1"></div>
-        <div class="door"></div>
-        <div class="shutter s2"></div>
-        <div id="customers"></div>
-      </div>
-
-      <!-- Thanh trạng thái kiểu biển hiệu -->
-      <header id="hud">
-        <span id="hudLevel">Màn 1</span>
-        <div class="money">
-          <span id="hudMoney">0k / 0k</span>
-          <div id="hudBar"><i></i></div>
-        </div>
-        <span id="hudTime">3:00</span>
-        <button type="button" class="btn-pause" data-ui="pause" aria-label="Tạm dừng" data-i18n-aria="paused"></button>
-      </header>
-
-      <!-- Xe bánh mì: 3 đĩa + 2 cốc -->
-      <div id="counter">
-        <button type="button" class="plate" data-act="plate" data-i="0" style="left:14px" aria-label="Đĩa 1"><span class="dish"></span><span class="pfood"></span></button>
-        <button type="button" class="plate" data-act="plate" data-i="1" style="left:96px" aria-label="Đĩa 2"><span class="dish"></span><span class="pfood"></span></button>
-        <button type="button" class="plate" data-act="plate" data-i="2" style="left:178px" aria-label="Đĩa 3"><span class="dish"></span><span class="pfood"></span></button>
-        <button type="button" class="cup" data-act="cup" data-i="0" style="left:262px" aria-label="Cốc 1"></button>
-        <button type="button" class="cup" data-act="cup" data-i="1" style="left:306px" aria-label="Cốc 2"></button>
-        <div class="cart-front" data-i18n="cart">Bánh mì · Trà đá</div>
-      </div>
-
-      <!-- Khu bếp: bên trái là chủ quán (nhân vật của bạn), bên phải là bàn bếp -->
-      <div id="stations">
-        <div id="vendorBox" aria-hidden="true">
-          <span class="lamp"></span>
-          <div class="nameplate"><b id="vName">Cô Ba</b><small id="vRank"></small></div>
-          <div class="vfloor"></div>
-        </div>
-        <div id="vendor"></div>
-
-        <button type="button" id="basket" class="st" data-act="basket"><span class="ic"></span><span class="lb" data-i18n="stBasket">Bánh mì</span></button>
-        <div id="grill" class="st">
-          <button type="button" class="gslot" data-act="grill" data-i="0" style="left:3px" aria-label="Vỉ nướng 1"></button>
-          <button type="button" class="gslot" data-act="grill" data-i="1" style="left:61px" aria-label="Vỉ nướng 2"></button>
-          <span class="lb" data-i18n="stGrill">Lò than</span>
-        </div>
-        <button type="button" id="eggtray" class="st" data-act="egg" data-k="trung"><span class="ic"></span><span class="lb" data-i18n="stEgg">Trứng</span></button>
-
-        <div id="pan" class="st">
-          <button type="button" class="pslot" data-act="pan" data-i="0" style="left:4px" aria-label="Chảo 1"></button>
-          <button type="button" class="pslot" data-act="pan" data-i="1" style="left:52px" aria-label="Chảo 2"></button>
-          <span class="lb" data-i18n="stPan">Chảo rán</span>
-        </div>
-        <button type="button" id="jug" class="st" data-act="jug"><span class="ic"></span><span class="lb" data-i18n="stJug">Rót trà</span></button>
-        <button type="button" id="chanhTray" class="st tray" data-act="chanh" data-k="chanh"><span class="ic"></span><span class="lb">Chanh</span></button>
-
-        <button type="button" class="st tray" data-act="ing" data-k="pate" style="left:104px"><span class="ic"></span><span class="lb">Pate</span></button>
-        <button type="button" class="st tray" data-act="ing" data-k="cha" style="left:154px"><span class="ic"></span><span class="lb">Chả lụa</span></button>
-        <button type="button" class="st tray" data-act="ing" data-k="dua" style="left:204px"><span class="ic"></span><span class="lb">Đồ chua</span></button>
-        <button type="button" class="st tray" data-act="ing" data-k="rau" style="left:254px"><span class="ic"></span><span class="lb">Rau mùi</span></button>
-        <button type="button" class="st tray" data-act="ing" data-k="ot" style="left:304px"><span class="ic"></span><span class="lb">Ớt</span></button>
-
-        <button type="button" id="trash" class="st" data-act="trash"><span class="ic"></span><span class="lb" data-i18n="stTrash">Bỏ đi</span></button>
-        <div id="board" class="st" aria-label="Bảng giá"></div>
-      </div>
-
-      <div id="fx" aria-hidden="true"></div>
-      <div id="toast" role="status" aria-live="polite"></div>
-
-      <!-- Menu chính -->
-      <section id="menu" class="overlay">
+    <!-- Menu chính -->
+    <section id="menu" class="overlay">
+      <div class="menu-grid">
         <div class="sign">
           <small data-i18n="signSmall">Quán vỉa hè</small>
           <h1 data-i18n-html="signTitle">Bánh mì<br>Trà đá</h1>
           <p data-i18n="signHours">Mở cửa 6h – 22h</p>
         </div>
         <div class="card">
-          <p class="eyebrow" data-i18n="lang">Ngôn ngữ</p>
           <div class="langs" role="group">
             <button type="button" class="lang" data-ui="lang" data-lang="ja" lang="ja" aria-pressed="true">日本語</button>
             <button type="button" class="lang" data-ui="lang" data-lang="vi" lang="vi" aria-pressed="false">Tiếng Việt</button>
           </div>
-          <button type="button" class="btn alt" data-ui="creator" data-i18n="character">Nhân vật của tôi</button>
           <p class="best-line" id="menuBest"></p>
-          <button type="button" class="btn" data-ui="start" data-i18n="start">Bắt đầu bán · 3 phút</button>
+          <button type="button" class="btn" data-ui="solo" data-i18n="solo">Chơi 1 mình</button>
+          <button type="button" class="btn alt" data-ui="create" data-i18n="createRoom">Tạo phòng online</button>
+          <div class="join">
+            <input id="joinCode" type="text" maxlength="5" autocomplete="off" spellcheck="false" data-i18n-ph="codePh" aria-label="Mã phòng">
+            <button type="button" class="btn alt" data-ui="join" data-i18n="joinRoom">Vào phòng</button>
+          </div>
           <div class="row">
+            <button type="button" class="btn ghost" data-ui="creator" data-i18n="character">Nhân vật của tôi</button>
             <button type="button" class="btn ghost" data-ui="help" data-i18n="help">Cách chơi</button>
             <button type="button" class="btn ghost" id="btnSound" data-ui="sound">Âm thanh: Bật</button>
           </div>
+          <p class="note" data-i18n="pcNote">Chơi bằng bàn phím máy tính · 1–4 người</p>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Tạo / chỉnh nhân vật -->
-      <section id="creator" class="overlay" hidden>
-        <div class="card creator">
-          <div class="cr-top">
-            <button type="button" id="charPreview" class="char-preview" data-ui="wave" data-i18n-aria="crTapHint"></button>
-            <div class="cr-head">
-              <p class="eyebrow" data-i18n="crEyebrow">Chủ quán của bạn</p>
-              <label class="field" for="charName"><span data-i18n="crName">Tên chủ quán</span>
-                <input id="charName" type="text" maxlength="12" autocomplete="off" spellcheck="false">
-              </label>
-              <p class="sub" id="charStars"></p>
-              <p class="sub" data-i18n="crTapHint">Chạm vào nhân vật để chào</p>
-            </div>
-          </div>
+    <!-- Hướng dẫn -->
+    <section id="help" class="overlay" hidden>
+      <div class="card wide">
+        <h2 data-i18n="help">Cách chơi</h2>
+        <ol class="steps">
+          <li data-i18n-html="help1"></li>
+          <li data-i18n-html="help2"></li>
+          <li data-i18n-html="help3"></li>
+          <li data-i18n-html="help4"></li>
+          <li data-i18n-html="help5"></li>
+          <li data-i18n-html="help6"></li>
+        </ol>
+        <button type="button" class="btn" data-ui="menu" data-i18n="gotIt">Đã hiểu</button>
+      </div>
+    </section>
+
+    <!-- Giới thiệu trước khi chơi 1 mình -->
+    <section id="intro" class="overlay" hidden>
+      <div class="card wide">
+        <div id="introBody" class="stack"></div>
+        <div class="row">
+          <button type="button" class="btn" data-ui="go" data-i18n="play">Mở hàng!</button>
+          <button type="button" class="btn ghost" data-ui="menu" data-i18n="toMenu">Về menu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Phòng chờ chơi online -->
+    <section id="lobby" class="overlay" hidden>
+      <div class="card wide lobby">
+        <div class="stack">
+          <p class="eyebrow" data-i18n="lobbyTitle">Phòng chơi</p>
+          <div class="code-row"><b id="lobbyCode" class="code">·····</b>
+            <button type="button" class="btn ghost small" data-ui="copy" data-i18n="copy">Sao chép mã</button></div>
+          <p class="sub" data-i18n="shareHint">Gửi mã này cho bạn bè</p>
+          <ul id="lobbyList" class="players"></ul>
+          <button type="button" class="btn" id="btnStartRoom" data-ui="startRoom" data-i18n="start">Bắt đầu bán · 3 phút</button>
+          <p class="sub center" id="lobbyWait" data-i18n="waitHost">Đang chờ chủ phòng bắt đầu…</p>
+          <button type="button" class="btn ghost" data-ui="leave" data-i18n="leave">Rời phòng</button>
+        </div>
+        <div id="lobbyRules" class="stack"></div>
+      </div>
+    </section>
+
+    <!-- Tạo / chỉnh nhân vật -->
+    <section id="creator" class="overlay" hidden>
+      <div class="card wide creator">
+        <div class="cr-left">
+          <canvas id="charPreview" class="char-preview" data-ui="turn" width="140" height="210" aria-label="Xoay nhân vật"></canvas>
+          <p class="sub center" data-i18n="crTapHint">Bấm vào nhân vật để xoay</p>
+        </div>
+        <div class="cr-right">
+          <p class="eyebrow" data-i18n="crEyebrow">Chủ quán của bạn</p>
+          <label class="field" for="charName"><span data-i18n="crName">Tên nhân vật</span>
+            <input id="charName" type="text" maxlength="12" autocomplete="off" spellcheck="false">
+          </label>
+          <p class="sub" id="charStars"></p>
           <div id="charOpts" class="cr-opts"></div>
           <button type="button" class="btn" data-ui="saveChar" data-i18n="crSave">Lưu nhân vật</button>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- Hướng dẫn -->
-      <section id="help" class="overlay" hidden>
-        <div class="card">
-          <h2 data-i18n="help">Cách chơi</h2>
-          <ol class="steps">
-            <li data-i18n-html="help1"></li>
-            <li data-i18n-html="help2"></li>
-            <li data-i18n-html="help3"></li>
-            <li data-i18n-html="help4"></li>
-            <li data-i18n-html="help5"></li>
-            <li data-i18n-html="help6"></li>
-          </ol>
-          <p class="sub" data-i18n="helpTip"></p>
-          <button type="button" class="btn" data-ui="menu" data-i18n="gotIt">Đã hiểu</button>
-        </div>
-      </section>
+    <!-- Tạm dừng -->
+    <section id="pause" class="overlay" hidden>
+      <div class="card">
+        <h2 data-i18n="paused">Tạm dừng</h2>
+        <button type="button" class="btn" data-ui="resume" data-i18n="resume">Chơi tiếp</button>
+        <button type="button" class="btn alt" id="btnPauseRetry" data-ui="go" data-i18n="retry">Chơi lại</button>
+        <button type="button" class="btn ghost" data-ui="menu" data-i18n="toMenu">Về menu</button>
+      </div>
+    </section>
 
-      <!-- Giới thiệu màn -->
-      <section id="intro" class="overlay" hidden>
-        <div class="card">
-          <div id="introBody" class="card-body"></div>
-          <button type="button" class="btn" data-ui="go" data-i18n="open">Mở hàng!</button>
-          <button type="button" class="btn ghost" data-ui="menu" data-i18n="toMenu">Về menu</button>
-        </div>
-      </section>
+    <!-- Kết quả -->
+    <section id="result" class="overlay" hidden>
+      <div class="card center" id="resultBody"></div>
+    </section>
 
-      <!-- Tạm dừng -->
-      <section id="pause" class="overlay" hidden>
-        <div class="card center">
-          <h2 data-i18n="paused">Tạm dừng</h2>
-          <button type="button" class="btn" data-ui="resume" data-i18n="resume">Bán tiếp</button>
-          <button type="button" class="btn alt" data-ui="retry" data-i18n="retry">Chơi lại</button>
-          <button type="button" class="btn ghost" data-ui="menu" data-i18n="toMenu">Về menu</button>
-        </div>
-      </section>
+    <!-- Thông báo / đang kết nối -->
+    <section id="msg" class="overlay" hidden>
+      <div class="card center">
+        <p id="msgText" class="msg-text"></p>
+        <button type="button" class="btn" id="msgOk" data-ui="msgOk">OK</button>
+      </div>
+    </section>
+  </div>
 
-      <!-- Kết quả -->
-      <section id="result" class="overlay" hidden>
-        <div class="card center" id="resultBody"></div>
-      </section>
+  <!-- Thẻ thông tin chữ to: đồ đang cầm, khu trước mặt / món khách gọi -->
+  <div id="heldCard" class="pcard" hidden></div>
+  <div id="lookCard" class="pcard" hidden></div>
 
+  <!-- Điều khiển ảo trên điện thoại -->
+  <div id="touch" hidden>
+    <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+    <button type="button" id="btnAct" aria-label="Cầm / Đặt"><span data-i18n-html="tbAct">Cầm<br>Đặt</span><small data-i18n="tbHold">giữ: rửa bát</small></button>
+    <div id="tsmall">
+      <button type="button" id="btnPauseT" class="tsm" data-i18n-aria="paused" aria-label="Tạm dừng"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="4" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="11.5" y="4" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+      <button type="button" id="btnFull" class="tsm" data-i18n-aria="fullscreen" aria-label="Toàn màn hình"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
   </div>
 </div>
 
 <script src="js/data.js"></script>
 <script src="js/i18n.js"></script>
-<script src="js/vendor.js"></script>
 <script src="js/art.js"></script>
-<script src="js/game.js"></script>
-<script src="js/ui.js"></script>
+<script src="js/chars.js"></script>
+<script src="js/world.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/net.js"></script>
+<script src="js/main.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/touch.js"></script>
+<script src="js/screens.js"></script>
 </body>
 </html>
