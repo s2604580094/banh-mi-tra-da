@@ -30,6 +30,8 @@ function itemIcon(it) {
   if (it.k === 'b') return breadSvg(it.s === 'raw' ? 'raw' : it.s === 'burnt' ? 'burnt' : 'toast', it.i, it.w);
   if (it.k === 'e') return it.s === 'raw' ? ART.ing('trung') : ART.egg(it.s === 'fried' ? 'ready' : 'burnt');
   if (it.k === 'c') return it.g === 'glass' ? ART.cup(it.f ? 1 : 0, it.l) : plasticSvg(it.f, it.l);
+  if (it.k === 'i') return ART.ing(it.cut ? it.g + '_cut' : it.g);
+  if (it.k === 'peel') return ART.peel();
   return dirtySvg(it.n.length);
 }
 const pchip = (icon, label, cls = '') => `<span class="chip-i ${cls}">${icon}${esc(label)}</span>`;
@@ -44,13 +46,13 @@ function describe(it) {
     if (it.s === 'raw') { d.title = T('itRawBread'); d.note = T('noteRawBread'); return d; }
     if (it.s === 'burnt') { d.title = T('itBurnt'); d.stat = ['bad', T('noteBurnt')]; return d; }
     d.title = T('itToast');
-    d.sub = T(it.w === 'plate' ? 'onPlate' : it.w === 'paper' ? 'inPaper' : 'notWrapped');
+    d.sub = V.mode === 'versus' ? '' : T(it.w === 'plate' ? 'onPlate' : it.w === 'paper' ? 'inPaper' : 'notWrapped');
     const foods = V.recipes.filter(r => RECIPES[r].type === 'food');
     const match = foods.find(r => sameIngs(RECIPES[r].ings, it.i));
     let miss = [];
     if (match) {
       d.stat = ['ok', '✓ ' + T('doneDish', { dish: dishName(match) })];
-      if (!it.w) d.note = T('wrapHint');
+      if (!it.w && V.mode !== 'versus') d.note = T('wrapHint');
     } else {
       const poss = foods.filter(r => it.i.every(k => RECIPES[r].ings.includes(k)))
         .sort((a, b) => RECIPES[a].ings.length - RECIPES[b].ings.length);
@@ -82,6 +84,14 @@ function describe(it) {
     }
     return d;
   }
+  if (it.k === 'i') {
+    const nm = ingName(it.g);
+    d.title = T(it.cut ? 'itIngCut' : 'itIngRaw', { ing: nm });
+    if (it.cut) d.stat = ['ok', '✓ ' + T('boardCut')], d.note = T('noteCutReady');
+    else d.stat = ['warn', T('noteNeedChop')];
+    return d;
+  }
+  if (it.k === 'peel') { d.title = T('itPeel'); d.note = T('notePeel'); return d; }
   d.title = T('itDirty', { n: it.n.length }); d.stat = ['warn', T('noteDirty')];
   return d;
 }
@@ -95,22 +105,27 @@ function itemBlock(it) {
 
 /* ---------- Đơn của khách (phóng to) ---------- */
 function orderHTML(c) {
-  const dine = c.type === 'dine';
-  return `<div class="ohead"><span class="mode ${c.type}">${T(dine ? 'modeDine' : 'modeTake')}</span><span class="pbar"><i></i></span></div>` +
+  const vs = V.mode === 'versus', dine = c.type === 'dine' && !vs;
+  const myTeam = vs && V.players[me] ? V.players[me].team : -1;
+  const tag = !vs ? `<span class="mode ${c.type}">${T(dine ? 'modeDine' : 'modeTake')}</span>`
+    : c.fake != null && c.fake === myTeam ? `<span class="mode fake">${T('custFake')}</span>`
+    : c.vip || c.fake != null ? `<span class="mode vip">${T('custVip')}</span>` : '';
+  return `<div class="ohead">${tag}<span class="pbar"><i></i></span></div>` +
     c.items.map(it => {
       const R = RECIPES[it.id], food = R.type === 'food';
-      const icon = food ? breadSvg('toast', R.ings, dine ? 'plate' : 'paper') : (dine ? ART.cup(1, R.lemon) : plasticSvg(1, R.lemon));
-      const need = T(food ? (dine ? 'needPlate' : 'needPaper') : (dine ? 'needGlass' : 'needPlastic'));
+      const icon = food ? breadSvg('toast', R.ings, vs ? '' : dine ? 'plate' : 'paper') : (dine ? ART.cup(1, R.lemon) : plasticSvg(1, R.lemon));
+      const need = vs ? (R.vip ? '+' + VS.vipBonus + ' VIP' : '') : T(food ? (dine ? 'needPlate' : 'needPaper') : (dine ? 'needGlass' : 'needPlastic'));
       const chips = food ? ingChips(R.ings) : R.lemon ? ingChips(['chanh']) : '';
       return `<div class="oline${it.done ? ' done' : ''}"><span class="pic">${icon}</span>` +
-        `<span class="ptx"><b>${esc(dishName(it.id))}</b><small>${esc(need)}</small>${chips ? `<span class="chips">${chips}</span>` : ''}</span></div>`;
+        `<span class="ptx"><b>${esc(dishName(it.id))}</b>${need ? `<small>${esc(need)}</small>` : ''}${chips ? `<span class="chips">${chips}</span>` : ''}</span></div>`;
     }).join('');
 }
 
 /* ---------- Thẻ "Trước mặt" ---------- */
-const STATION_NOTE = { B: 'noteB', E: 'noteE', C: 'noteC', J: 'noteJ', L: 'noteL', W: 'noteW', X: 'noteX' };
+const STATION_NOTE = { B: 'noteB', E: 'noteE', C: 'noteC', J: 'noteJ', L: 'noteL', W: 'noteW', X: 'noteX', Z: 'noteZ', N: 'noteN' };
 function lookHTML(key) {
-  const head = name => `<div class="ph">${isTouch ? '' : '<kbd>Space</kbd>'}<b>${esc(name)}</b></div>`;
+  const useKey = ['Q', 'K'].includes(key ? tileAt(...key.split(',').map(Number)) : '') && V.mode === 'versus';
+  const head = name => `<div class="ph">${isTouch ? '' : `<kbd>${useKey ? 'E' : 'Space'}</kbd>`}<b>${esc(name)}</b></div>`;
   if (!key) return { html: `<div class="ph">${T('lookTitle')}</div><p class="pnote">${T('lookNone')}</p>`, cust: null };
   const [x, y] = key.split(',').map(Number), ch = tileAt(x, y);
   const name = BIN[ch] ? ingName(BIN[ch]) : T(STATION[ch]);
@@ -121,7 +136,7 @@ function lookHTML(key) {
     if (ch === 'T') {
       const t = V.tables[TABLE_AT[key]];
       cust = t.cust != null ? V.custs.find(c => c.id === t.cust) : null;
-      if (t.dirty.length) body = stat('warn', T('tableDirty', { n: t.dirty.length }));
+      if (t.dirty && t.dirty.length) body = stat('warn', T('tableDirty', { n: t.dirty.length }));
     } else {
       const id = V.wins[winOfCol(x)];
       cust = id != null ? V.custs.find(c => c.id === id) : null;
@@ -140,6 +155,18 @@ function lookHTML(key) {
         : ph === 'warn' ? ['bad', T('ckWarn')] : ['bad', T('ckBurnt')];
       body = `<div class="pmain"><span class="pic">${itemIcon(ts.item)}</span>${stat(msg[0], msg[1])}</div>`;
     }
+  } else if (ch === 'K') {
+    const ts = V.tiles[key];
+    if (!ts || !ts.item) body = note(T('noteK'), true);
+    else body = `<div class="pmain"><span class="pic">${itemIcon(ts.item)}</span>` +
+      (ts.item.cut ? stat('ok', '✓ ' + T('boardCut')) : stat('warn', ts.p > 0 ? T('chopProg', { n: Math.round(ts.p * 100) }) : T('noteNeedChop'))) + '</div>';
+  } else if (ch === 'M') {
+    const mk = V.market && V.market[key];
+    body = mk && mk.it ? `<div class="pmain"><span class="pic">${itemIcon(mk.it)}</span>${stat('ok', T('mkHas', { ing: ingName(mk.it.g) }))}</div>`
+      : mk && mk.warn > 0 ? stat('warn', T('mkSoon', { n: Math.ceil(mk.warn) })) : note(T('mkEmpty'));
+  } else if (ch === 'Q') {
+    const cd = V.bellCd ? V.bellCd[teamOfX(x)] : 0;
+    body = note(T('noteQ')) + stat(cd > 0 ? 'warn' : 'ok', cd > 0 ? T('bellWait', { n: Math.ceil(cd) }) : T('bellReady'));
   } else if (ch === '=') {
     const ts = V.tiles[key];
     body = ts && ts.item ? itemBlock(ts.item) : note(T('counterFree'), true);
@@ -171,40 +198,4 @@ function updatePanels(target) {
       bar.className = r < .2 ? 'low' : r < .45 ? 'mid' : '';
     }
   }
-}
-
-/* ---------- Vị trí thẻ và nút điều khiển theo màn hình ---------- */
-function setBox(el, o) {
-  ['left', 'top', 'right', 'bottom', 'width', 'height', 'maxHeight'].forEach(k => {
-    el.style[k] = o[k] == null ? '' : typeof o[k] === 'number' ? Math.round(o[k]) + 'px' : o[k];
-  });
-}
-function layoutPanels() {
-  const W = innerWidth, H = innerHeight, r = wrap.getBoundingClientRect();
-  const zone = $('#stickZone'), act = $('#btnAct'), small = $('#tsmall');
-  document.body.classList.toggle('touch', isTouch);
-  if (portrait) {                          // điện thoại cầm dọc: cảnh ở trên, thẻ ở giữa, nút ở dưới
-    const top = r.bottom + 8, cw = (W - 24) / 2, ctrl = 190, mh = Math.max(96, H - top - ctrl - 8);
-    setBox(PANEL.held, { left: 8, top, width: cw, maxHeight: mh });
-    setBox(PANEL.look, { left: 16 + cw, top, width: cw, maxHeight: mh });
-    const bs = Math.min(130, W * .34), ab = Math.min(110, W * .28);
-    setBox(zone, { left: 0, top: H - ctrl, width: W / 2, height: ctrl });
-    zone.style.setProperty('--bs', bs + 'px');
-    setBox(act, { left: W * .75 - ab / 2, bottom: 26, width: ab, height: ab });
-    setBox(small, { left: W * .75 - 44, bottom: 26 + ab + 12 });
-  } else if (isTouch) {                    // cầm ngang: thẻ và nút nằm 2 bên cảnh
-    const gL = r.left, gR = W - r.right;
-    const bs = Math.max(90, Math.min(140, gL - 14, H * .32)), ab = Math.max(80, Math.min(112, gR - 20, H * .28));
-    setBox(PANEL.held, { left: 6, top: 8, width: gL - 12, maxHeight: Math.max(80, H - bs - 40) });
-    setBox(PANEL.look, { left: r.right + 6, top: 8, width: gR - 12, maxHeight: Math.max(80, H - ab - 90) });
-    setBox(zone, { left: 0, top: H * .3, width: gL, height: H * .7 });
-    zone.style.setProperty('--bs', bs + 'px');
-    setBox(act, { left: r.right + gR / 2 - ab / 2, bottom: 18, width: ab, height: ab });
-    setBox(small, { left: r.right + gR / 2 - 44, bottom: 18 + ab + 12 });
-  } else {                                 // máy tính: 2 thẻ ở góc dưới bên phải cảnh
-    const w = Math.min(290, Math.max(210, r.width * .25));
-    setBox(PANEL.look, { left: r.right - w - 10, bottom: H - r.bottom + 10, width: w, maxHeight: r.height * .5 });
-    setBox(PANEL.held, { left: r.right - 2 * w - 18, bottom: H - r.bottom + 10, width: w, maxHeight: r.height * .5 });
-  }
-  [PANEL.held, PANEL.look].forEach(el => el.classList.toggle('narrow', parseFloat(el.style.width) < 230));
 }

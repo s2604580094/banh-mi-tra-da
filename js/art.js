@@ -19,6 +19,8 @@ const ART = (() => {
     if (has('trung')) s += '<path d="M28 29Q31 22 44 23.5Q57 21 64 26Q71 30 62 31H33Q25 31 28 29Z" fill="#FFF9EE" stroke="#E2D3B8" stroke-width=".8"/><ellipse cx="47" cy="26.5" rx="5.5" ry="3.4" fill="#F5AE16"/>';
     if (has('dua')) s += '<g stroke-linecap="round" stroke-width="2.4"><path d="M6 27.5L19 26" stroke="#F0862A"/><path d="M8 31L21 29.5" stroke="#FFF2D8"/><path d="M81 26L94 27.5" stroke="#F0862A"/><path d="M79 29.5L92 31" stroke="#FFF2D8"/></g>';
     if (has('rau')) s += '<g fill="#3C9A47"><circle cx="30" cy="24" r="3.4"/><circle cx="34.5" cy="22" r="2.8"/><circle cx="54" cy="22.5" r="3"/><circle cx="68" cy="23" r="3.4"/><circle cx="72" cy="25" r="2.6"/></g>';
+    if (has('bo')) s += [24, 44, 64].map(x => `<path d="M${x - 10} 29Q${x} 23 ${x + 12} 28L${x + 11} 31Q${x} 27 ${x - 9} 32Z" fill="#9E3B2E" stroke="#6E2219" stroke-width=".8"/><path d="M${x - 5} 28.5Q${x} 27 ${x + 5} 28.5" stroke="#F3C9BE" stroke-width="1" fill="none"/>`).join('');
+    if (has('nam')) s += [30, 50, 70].map(x => `<ellipse cx="${x}" cy="28" rx="7.5" ry="3" fill="#3A2C26" stroke="#1E1612" stroke-width=".8"/><path d="M${x - 4} 27.5h8" stroke="#C9B49A" stroke-width=".8" stroke-dasharray="1 1.4"/>`).join('');
     if (has('ot')) s += '<g fill="#D8261E" stroke="#9E140E" stroke-width=".6"><circle cx="25" cy="26" r="2.3"/><circle cx="60" cy="25" r="2.3"/><circle cx="80" cy="25.5" r="2.3"/></g>';
     return s;
   }
@@ -49,7 +51,22 @@ const ART = (() => {
     ot: '<path d="M9 31Q13 15 28 9Q22 20 13 33Z" fill="#D8261E" stroke="#9E140E"/><path d="M14 34Q22 22 34 20Q28 30 17 36Z" fill="#E8432B" stroke="#9E140E"/><path d="M28 9l4-4M34 20l3-3" stroke="#3C8A3A" stroke-width="2.4" stroke-linecap="round"/>',
     chanh: '<circle cx="20" cy="20" r="14" fill="#5FB236" stroke="#3E7F22"/><circle cx="20" cy="20" r="11" fill="#D8F0A2"/><g stroke="#A8D46A" stroke-width="1.4"><path d="M20 9v22M9 20h22M12.2 12.2l15.6 15.6M27.8 12.2L12.2 27.8"/></g><circle cx="20" cy="20" r="2" fill="#EFFAD0"/>',
   };
+  // nguyên liệu hiếm ở chợ (Bếp Chiến) và dạng đã thái
+  ICONS.bo = '<path d="M5 22Q4 11 17 9Q31 7 35 16Q38 27 26 31Q12 34 5 22Z" fill="#B5402F" stroke="#6E2219" stroke-width="1.4"/><path d="M10 18Q16 14 22 17M14 25Q21 21 29 23M20 12Q26 13 31 18" stroke="#F6D5CB" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M29 6l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#FFD447" stroke="#B8860B" stroke-width=".6"/>';
+  ICONS.nam = '<path d="M7 24Q6 12 19 10Q33 9 34 21Q34 32 21 33Q8 33 7 24Z" fill="#2E2420" stroke="#120C0A" stroke-width="1.4"/><g fill="#5A4A40"><circle cx="13" cy="19" r="1.6"/><circle cx="19" cy="15" r="1.4"/><circle cx="26" cy="17" r="1.7"/><circle cx="16" cy="26" r="1.5"/><circle cx="24" cy="25" r="1.8"/><circle cx="30" cy="23" r="1.3"/></g><path d="M31 5v6M28 8h6" stroke="#FFD447" stroke-width="1.6" stroke-linecap="round"/>';
+  ICONS.cha_cut = '<ellipse cx="20" cy="31" rx="15" ry="4" fill="#C69157"/>' + [[11, 20], [20, 17], [29, 20], [15, 27], [25, 27]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="6.5" ry="4.2" fill="#F5C9B6" stroke="#D69683"/>`).join('');
+  ICONS.bo_cut = '<ellipse cx="20" cy="31" rx="15" ry="4" fill="#C69157"/>' + [[12, 19], [21, 16], [29, 21], [17, 26]].map(([x, y]) => `<path d="M${x - 7} ${y}Q${x} ${y - 5} ${x + 7} ${y}Q${x} ${y + 4} ${x - 7} ${y}Z" fill="#B5402F" stroke="#6E2219"/><path d="M${x - 3} ${y - 1}h6" stroke="#F6D5CB" stroke-width="1.2"/>`).join('');
+  ICONS.nam_cut = '<ellipse cx="20" cy="31" rx="15" ry="4" fill="#C69157"/>' + [[12, 20], [21, 17], [29, 21], [17, 26], [26, 27]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5.5" ry="3.6" fill="#3A2C26" stroke="#120C0A"/><path d="M${x - 3} ${y}h6" stroke="#C9B49A" stroke-width=".8" stroke-dasharray="1 1.2"/>`).join('');
   const ing = k => `<svg viewBox="0 0 40 40" aria-hidden="true">${ICONS[k]}</svg>`;
+
+  // vỏ chuối nằm trên sàn
+  const peel = () => '<svg viewBox="0 0 40 30" aria-hidden="true"><ellipse cx="20" cy="25" rx="15" ry="3.5" fill="rgba(0,0,0,.18)"/><path d="M20 20Q12 21 4 26Q11 15 19 15Z" fill="#F2D034" stroke="#A88A12" stroke-width="1.2"/><path d="M20 20Q28 21 36 26Q30 14 21 15Z" fill="#F7DC4A" stroke="#A88A12" stroke-width="1.2"/><path d="M19 16Q19 7 23 4Q25 10 21 16Z" fill="#E9C421" stroke="#A88A12" stroke-width="1.2"/><path d="M20 18Q21 12 22 9" stroke="#FFF2A8" stroke-width="1.2" fill="none"/><circle cx="23" cy="4" r="1.6" fill="#5A4214"/></svg>';
+  // nải chuối (thùng lấy vỏ chuối)
+  const bananas = () => '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6 24Q8 34 22 34Q34 33 36 22" fill="none" stroke="#A88A12" stroke-width="2"/>' + [0, 1, 2].map(i => `<path d="M${8 + i * 3} ${22 - i * 5}Q${20} ${36 - i * 4} ${34} ${18 - i * 4}Q${22} ${27 - i * 4} ${10 + i * 3} ${19 - i * 5}Z" fill="${['#F2D034', '#F7DC4A', '#EBC72A'][i]}" stroke="#A88A12" stroke-width="1"/>`).join('') + '<path d="M33 12l3-4" stroke="#5A4214" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  // chuông phục vụ (gọi khách VIP giả)
+  const bell = (ready = true) => `<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="30" width="30" height="5" rx="2.5" fill="#8E5A35" stroke="#5A3A24"/><path d="M9 30Q9 15 20 14Q31 15 31 30Z" fill="${ready ? '#F2C14E' : '#B9B2A2'}" stroke="${ready ? '#A9771B' : '#7E786C'}" stroke-width="1.4"/><path d="M14 22Q16 18 20 17.5" stroke="#FFF2C2" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="18" y="9" width="4" height="5" rx="1.5" fill="${ready ? '#A9771B' : '#7E786C'}"/><path d="M13 7l3 3M27 7l-3 3M20 3v4" stroke="${ready ? '#F2A516' : 'transparent'}" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  // thớt + dao
+  const board = () => '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="12" width="30" height="22" rx="5" fill="#D8A86A" stroke="#8C6436" stroke-width="1.5"/><circle cx="30" cy="16" r="1.8" fill="#8C6436"/><path d="M10 20h16M10 25h14" stroke="#C69157" stroke-width="1.2"/><path d="M22 4L37 13L33 16L19 8Z" fill="#DCE3EA" stroke="#7E8891"/><path d="M33 16l4 3" stroke="#3A2A22" stroke-width="3" stroke-linecap="round"/></svg>';
 
   // trứng ốp trên chảo: cooking / ready / warn / burnt
   function egg(state) {
@@ -116,5 +133,5 @@ const ART = (() => {
       `${brows}${eyes}${specs}${mouth}${top}</svg>`;
   }
 
-  return { bread, ing, egg, cup, jug, basket, trash, lock, customer };
+  return { bread, ing, egg, cup, jug, basket, trash, lock, customer, peel, bananas, bell, board };
 })();

@@ -5,6 +5,7 @@ const CHAR = (() => {
     skins: ['#F6D7BC', '#EBC09A', '#D29E74', '#A8754F'],
     hairColors: ['#1E1A18', '#4A2E20', '#8A5A32', '#6B2238'],
     colors: ['#D9443A', '#2F74B5', '#3E9B48', '#F2A516', '#7A5BA6'],
+    bodies: ['f', 'm'],                       // nhân vật nữ / nam
     hairs: ['short', 'pony', 'bun', 'long'],
     outfits: [
       { id: 'apron', need: 0 }, { id: 'baba', need: 0 }, { id: 'chef', need: 250 },
@@ -15,7 +16,7 @@ const CHAR = (() => {
       { id: 'cap', need: 250 }, { id: 'toque', need: 400 }, { id: 'hachi', need: 650 },
     ],
   };
-  const DEF = { name: '', hair: 'pony', hairColor: '#1E1A18', skin: '#EBC09A', outfit: 'apron', color: '#D9443A', hat: 'nonla' };
+  const DEF = { name: '', body: 'f', hair: 'pony', hairColor: '#1E1A18', skin: '#EBC09A', outfit: 'apron', color: '#D9443A', hat: 'nonla' };
 
   function shade(hex, p) {
     const n = parseInt(hex.slice(1), 16), t = p < 0 ? 0 : 255, a = Math.abs(p);
@@ -54,6 +55,8 @@ const CHAR = (() => {
     const view = dir === 0 ? 'front' : dir === 3 ? 'back' : 'side';
     const ol = col => shade(col, -.42);
     const R = (x0, y0, w, h, r, col, line = true) => {
+      // gọi thiếu bán kính bo góc, ví dụ R(x, y, w, h, màu): tự bo góc 3
+      if (typeof r !== 'number') { line = col === undefined ? true : col; col = r; r = Math.min(3, w / 2, h / 2); }
       g.beginPath();
       g.moveTo(x0 + r, y0); g.arcTo(x0 + w, y0, x0 + w, y0 + h, r); g.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
       g.arcTo(x0, y0 + h, x0, y0, r); g.arcTo(x0, y0, x0 + w, y0, r); g.closePath();
@@ -71,6 +74,7 @@ const CHAR = (() => {
     g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(0, 0, 13, 4.2, 0, 0, Math.PI * 2); g.fill();
     if (dir === 1) g.scale(-1, 1);          // nhìn trái = lật hình nhìn phải
     g.translate(0, bob + (sit ? 8 : 0));
+    if (o.pose === 'slip') { g.translate(0, -20); g.rotate(Math.sin((o.t || 0) * 16) * .28); g.translate(0, 20); }
     const hemY = P.robe ? -3 : P.tunic ? -6 : -14;
 
     /* ----- chân ----- */
@@ -130,12 +134,15 @@ const CHAR = (() => {
       g.beginPath(); g.arc(cx, -48, 13.5, 0, Math.PI * 2); g.fillStyle = skinG(cx, -48); g.fill(); g.strokeStyle = ol(c.skin); g.lineWidth = 1.1; g.stroke();
     }
     function face() {
-      const ink = '#2B2118', mood = o.mood || (o.pose === 'happy' ? 'happy' : 'normal');
+      const ink = '#2B2118', mood = o.mood || (o.pose === 'happy' ? 'happy' : o.pose === 'slip' ? 'worried' : 'normal');
       const eyes = view === 'front' ? [-4.6, 4.6] : [7.5];
       eyes.forEach(ex => {
         if (mood === 'happy') { g.beginPath(); g.arc(ex, -45.5, 2.2, Math.PI * 1.1, Math.PI * 1.9); g.strokeStyle = ink; g.lineWidth = 1.6; g.stroke(); }
         else { E(ex, -46.5, 1.8, 2.4, ink); E(ex + .6, -47.4, .6, .6, '#fff'); }
       });
+      // nữ: lông mi cong; nam: lông mày đậm
+      if (c.body === 'f' && mood !== 'happy') eyes.forEach(ex => { L([ex + 1.3, -48.3, ex + 3.4, -50], ink, 1.1); L([ex - .3, -48.8, ex + .8, -50.8], ink, 1); });
+      if (c.body === 'm' && mood !== 'angry' && mood !== 'worried') eyes.forEach(ex => L([ex - 2.6, -51, ex + 2.4, -51.4], shade(c.hairColor, -.1), 2));
       if (mood === 'angry' || mood === 'worried') {
         eyes.forEach(ex => L(mood === 'angry' ? [ex - 2.5, -51.5, ex + 2, -50] : [ex - 2.5, -50, ex + 2, -51.5], ink, 1.3));
       }

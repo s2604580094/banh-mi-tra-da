@@ -1,0 +1,14 @@
+# Hệ điều hành
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Trình soạn thảo (giữ lại gợi ý extension cho VS Code)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Thư viện / bản build nếu sau này dùng tới
+node_modules/
+dist/
+*.log
