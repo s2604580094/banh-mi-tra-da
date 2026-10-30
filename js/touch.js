@@ -1,7 +1,7 @@
 /* touch.js — điều khiển ảo trên điện thoại / máy tính bảng:
    cần điều khiển (trái) để di chuyển, nút đỏ (phải) để cầm / đặt / dùng — giữ nút để rửa bát,
    nút tạm dừng và toàn màn hình. Chỉ hiện khi máy có màn hình cảm ứng và đang chơi. */
-const TOUCH = { x: 0, y: 0, on: false, hold: false };
+const TOUCH = { x: 0, y: 0, on: false, hold: false, useHold: false };
 const TOUCH_LAYER = $('#touch'), OVERLAYS = $$('.overlay');
 
 (() => {
@@ -45,6 +45,18 @@ const TOUCH_LAYER = $('#touch'), OVERLAYS = $$('.overlay');
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => btn.addEventListener(t, up));
   btn.addEventListener('contextmenu', e => e.preventDefault());
 
+  // nút cam (Bếp Chiến): Tương tác / Ném — giữ để cắt thái
+  const ub = $('#btnUse');
+  ub.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    Sound.unlock();
+    TOUCH.useHold = true; ub.classList.add('down');
+    if (playing && !paused) doUse();
+  });
+  const uup = () => { TOUCH.useHold = false; ub.classList.remove('down'); };
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => ub.addEventListener(t, uup));
+  ub.addEventListener('contextmenu', e => e.preventDefault());
+
   $('#btnPauseT').addEventListener('click', () => togglePause());
   const fsBtn = $('#btnFull'), root = document.documentElement;
   const canFs = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
@@ -60,6 +72,9 @@ const TOUCH_LAYER = $('#touch'), OVERLAYS = $$('.overlay');
       .catch(() => { /* máy không hỗ trợ khóa xoay: bỏ qua */ });
   });
 
+  // iPhone / iPad: chặn phóng to bằng 2 ngón và bật âm thanh khi nhấc tay (Safari cần cử chỉ này)
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  addEventListener('touchend', () => Sound.unlock(), { passive: true });
   // lần chạm đầu tiên → bật chế độ cảm ứng (cho máy tính có màn hình cảm ứng)
   addEventListener('touchstart', () => { if (!isTouch) { isTouch = true; fit(); } }, { passive: true });
 })();
@@ -67,8 +82,9 @@ const TOUCH_LAYER = $('#touch'), OVERLAYS = $$('.overlay');
 // hiện điều khiển ảo khi đang chơi và không có màn hình phủ nào
 function syncTouch() {
   const on = isTouch && playing && OVERLAYS.every(o => o.hidden);
+  TOUCH_LAYER.classList.toggle('vs', GMODE === 'versus');
   if (TOUCH_LAYER.hidden === on) {
     TOUCH_LAYER.hidden = !on;
-    if (!on) { TOUCH.hold = false; TOUCH.on = false; TOUCH.x = TOUCH.y = 0; }
+    if (!on) { TOUCH.hold = false; TOUCH.useHold = false; TOUCH.on = false; TOUCH.x = TOUCH.y = 0; }
   }
 }

@@ -3,6 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Thêm vào màn hình chính → mở toàn màn hình như ứng dụng (iPhone, iPad, Android) -->
+  <meta name="theme-color" content="#1D4636">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bánh Mì">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <title>Quán Bánh Mì Trà Đá</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,8 +38,13 @@
             <button type="button" class="lang" data-ui="lang" data-lang="ja" lang="ja" aria-pressed="true">日本語</button>
             <button type="button" class="lang" data-ui="lang" data-lang="vi" lang="vi" aria-pressed="false">Tiếng Việt</button>
           </div>
+          <div class="modes" role="group">
+            <button type="button" class="mode-tab" data-ui="gmode" data-gm="coop" data-i18n="modeCoop">Cùng bán</button>
+            <button type="button" class="mode-tab vs" data-ui="gmode" data-gm="versus" data-i18n="modeVs">Bếp Chiến 2v2</button>
+          </div>
+          <p class="mode-desc" id="modeDesc"></p>
           <p class="best-line" id="menuBest"></p>
-          <button type="button" class="btn" data-ui="solo" data-i18n="solo">Chơi 1 mình</button>
+          <button type="button" class="btn" id="btnSolo" data-ui="solo" data-i18n="solo">Chơi 1 mình</button>
           <button type="button" class="btn alt" data-ui="create" data-i18n="createRoom">Tạo phòng online</button>
           <div class="join">
             <input id="joinCode" type="text" maxlength="5" autocomplete="off" spellcheck="false" data-i18n-ph="codePh" aria-label="Mã phòng">
@@ -58,6 +72,14 @@
           <li data-i18n-html="help5"></li>
           <li data-i18n-html="help6"></li>
         </ol>
+        <h2 class="h-vs" data-i18n="helpVsTitle">Bếp Chiến 2v2</h2>
+        <ol class="steps">
+          <li data-i18n-html="hv1"></li>
+          <li data-i18n-html="hv2"></li>
+          <li data-i18n-html="hv3"></li>
+          <li data-i18n-html="hv4"></li>
+          <li data-i18n-html="hv5"></li>
+        </ol>
         <button type="button" class="btn" data-ui="menu" data-i18n="gotIt">Đã hiểu</button>
       </div>
     </section>
@@ -78,10 +100,16 @@
       <div class="card wide lobby">
         <div class="stack">
           <p class="eyebrow" data-i18n="lobbyTitle">Phòng chơi</p>
+          <div class="modes" role="group">
+            <button type="button" class="mode-tab" data-ui="roomMode" data-rm="coop" data-i18n="modeCoop">Cùng bán</button>
+            <button type="button" class="mode-tab vs" data-ui="roomMode" data-rm="versus" data-i18n="modeVs">Bếp Chiến 2v2</button>
+          </div>
           <div class="code-row"><b id="lobbyCode" class="code">·····</b>
             <button type="button" class="btn ghost small" data-ui="copy" data-i18n="copy">Sao chép mã</button></div>
           <p class="sub" data-i18n="shareHint">Gửi mã này cho bạn bè</p>
           <ul id="lobbyList" class="players"></ul>
+          <button type="button" class="btn ghost small" id="btnTeam" data-ui="team" data-i18n="teamSwitch" hidden>Đổi đội</button>
+          <p class="sub" id="lobbyNote"></p>
           <button type="button" class="btn" id="btnStartRoom" data-ui="startRoom" data-i18n="start">Bắt đầu bán · 3 phút</button>
           <p class="sub center" id="lobbyWait" data-i18n="waitHost">Đang chờ chủ phòng bắt đầu…</p>
           <button type="button" class="btn ghost" data-ui="leave" data-i18n="leave">Rời phòng</button>
@@ -141,6 +169,7 @@
   <div id="touch" hidden>
     <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
     <button type="button" id="btnAct" aria-label="Cầm / Đặt"><span data-i18n-html="tbAct">Cầm<br>Đặt</span><small data-i18n="tbHold">giữ: rửa bát</small></button>
+    <button type="button" id="btnUse" aria-label="Tương tác / Ném"><span data-i18n-html="tbUse">Tương tác<br>Ném</span><small data-i18n="tbUseHold">giữ: thái</small></button>
     <div id="tsmall">
       <button type="button" id="btnPauseT" class="tsm" data-i18n-aria="paused" aria-label="Tạm dừng"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="4" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="11.5" y="4" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
       <button type="button" id="btnFull" class="tsm" data-i18n-aria="fullscreen" aria-label="Toàn màn hình"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
@@ -154,9 +183,11 @@
 <script src="js/chars.js"></script>
 <script src="js/world.js"></script>
 <script src="js/sim.js"></script>
+<script src="js/versus.js"></script>
 <script src="js/net.js"></script>
 <script src="js/main.js"></script>
 <script src="js/panels.js"></script>
+<script src="js/layout.js"></script>
 <script src="js/touch.js"></script>
 <script src="js/screens.js"></script>
 </body>

@@ -1,35 +1,69 @@
-/* world.js — bản đồ quán nhìn chéo 2.5D: va chạm, chọn khu đang đứng gần, vẽ sàn, quầy, đồ ăn và khách.
-   Toạ độ thế giới tính bằng ô (x cột, y hàng; y là chân nhân vật). Màn hình logic 960×600. */
-const TW = 48, TH = 40, OY = 100, VW = 960, VH = 640;
-let UIZ = 1;                                                        // phóng to chữ trên canvas khi màn hình nhỏ (main.js đặt)
-const COLS = MAP[0].length, ROWS = MAP.length;
-const PCOL = ['#D9443A', '#2F74B5', '#3E9B48', '#E0A21A'];          // màu người chơi 1–4
+/* world.js — bản đồ quán nhìn chéo 2.5D: va chạm, chọn khu đang đứng gần, vẽ sàn, quầy, đồ ăn, khách.
+   Có 2 bản đồ: "coop" (Cùng bán) và "versus" (Bếp Chiến 2 đội). useMap() đổi bản đồ.
+   Toạ độ thế giới tính bằng ô (x cột, y hàng; y là chân nhân vật). */
+const TW = 48, TH = 40, OY = 100;
+let UIZ = 1;                                                        // phóng to chữ trên canvas khi màn hình nhỏ (layout.js đặt)
+let MAP_CUR = MAP, MAPCFG = null, OVR = null;                       // OVR: ô bị đổi tạm thời (giờ cao điểm đảo khay)
+let COLS = MAP[0].length, ROWS = MAP.length, VW = COLS * TW, VH = OY + ROWS * TH + 60;
+let VIEWX0 = 0, VIEWX1 = VW;                                        // phần cảnh đang hiện trên màn hình (camera)
+const PCOL = ['#D9443A', '#2F74B5', '#3E9B48', '#E0A21A'];          // màu người chơi 1–4 (Cùng bán)
 
-const tileAt = (x, y) => (MAP[y] && MAP[y][x]) || '#';
+function tileAt(x, y) {
+  if (OVR) { const o = OVR[x + ',' + y]; if (o) return o; }
+  return (MAP_CUR[y] && MAP_CUR[y][x]) || '#';
+}
 const keyOf = (x, y) => x + ',' + y;
 const STATION = {
   B: 'stBread', G: 'stGrill', E: 'stEgg', P: 'stPan', J: 'stJug', L: 'stLemon', C: 'stCups', S: 'stSink',
   R: 'stPlates', V: 'stGlasses', X: 'stTrash', W: 'stWrap', m: 'stTake', '=': 'stCounter', T: 'stTable',
+  K: 'stBoard', Z: 'stChaRoll', N: 'stBanana', Q: 'stBell', M: 'stMarket',
   p: 'ing', q: 'ing', u: 'ing', r: 'ing', o: 'ing',
 };
 const BIN = { p: 'pate', q: 'cha', u: 'dua', r: 'rau', o: 'ot' };
-const WINDOW_COLS = [2, 4, 6];                                      // 3 chỗ khách mang về đứng ngoài quầy
+const WINDOW_COLS = [2, 4, 6];                                      // 3 chỗ khách mang về đứng ngoài quầy (Cùng bán)
 const isInteract = (x, y) => STATION[tileAt(x, y)] !== undefined;
-const isWalk = (x, y) => '.,c'.includes(tileAt(x, y));
+const isWalk = (x, y) => '.,c:'.includes(tileAt(x, y));
 const usesIng = (k, recipes) => recipes.some(r => RECIPES[r].type === 'food' && RECIPES[r].ings.includes(k));
 // khu chưa mở theo thực đơn hiện tại
 function isLocked(ch, recipes) {
   if (ch === 'E' || ch === 'P') return !usesIng('trung', recipes);
   if (ch === 'L') return !recipes.includes('trachanh');
+  if (ch === 'Z') return !usesIng('cha', recipes);
   if (BIN[ch]) return !usesIng(BIN[ch], recipes);
   return false;
 }
 const winOfCol = col => Math.max(0, Math.min(2, Math.floor((col - 1.5) / 2)));
-// bàn ăn và ghế (khách ngồi bên phải bàn, quay sang trái)
-const TABLES = [], TABLE_AT = {};
-MAP.forEach((row, y) => [...row].forEach((ch, x) => {
-  if (ch === 'T') { TABLE_AT[keyOf(x, y)] = TABLES.length; TABLES.push({ x, y, seat: { x: x + 1, y } }); }
-}));
+// đội sở hữu ô (Bếp Chiến): 0 = Đội Đỏ (trái), 1 = Đội Xanh (phải), -1 = khu chung
+const teamOfX = x => (MAPCFG && MAPCFG.name === 'versus' ? (x <= 9 ? 0 : x >= 15 ? 1 : -1) : -1);
+
+const MAPS = {
+  coop: {
+    name: 'coop', map: MAP,
+    seat: (x, y) => ({ x: x + 1, y }),                              // khách ngồi bên phải bàn
+    tall: (x, y) => y <= 1 || ((x === 10 || x === 19) && y < 9),
+    tiled: (x, y) => x > 10 && y > 1 && y < 9,
+  },
+  versus: {
+    name: 'versus', map: MAP_VS,
+    seat: (x, y) => ({ x, y: y - 1 }),                              // khách ngồi ghế phía trên bàn, quay mặt xuống
+    tall: (x, y) => y <= 1 || ((x === 9 || x === 15) && y < 10),
+    tiled: (x, y) => x >= 10 && x <= 14,
+  },
+};
+let TABLES = [], TABLE_AT = {}, BLOCKS = [];
+function useMap(name) {
+  MAPCFG = MAPS[name] || MAPS.coop;
+  MAP_CUR = MAPCFG.map; OVR = null;
+  COLS = MAP_CUR[0].length; ROWS = MAP_CUR.length;
+  VW = COLS * TW; VH = OY + ROWS * TH + 60;
+  VIEWX0 = 0; VIEWX1 = VW;
+  TABLES = []; TABLE_AT = {}; BLOCKS = [];
+  MAP_CUR.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === 'T') { TABLE_AT[keyOf(x, y)] = TABLES.length; TABLES.push({ x, y, seat: MAPCFG.seat(x, y) }); }
+    if (!'.,c_:'.includes(ch)) BLOCKS.push({ x, y, ch, key: keyOf(x, y) });
+  }));
+  floorCanvas = null;
+}
 
 /* ---------- Di chuyển và va chạm ---------- */
 function canStand(x, y) {
@@ -46,6 +80,21 @@ function movePlayer(p, ix, iy, dt) {
   const ny = p.y + iy * sp; if (canStand(p.x, ny)) p.y = ny;
   p.dir = Math.abs(ix) > Math.abs(iy) ? (ix < 0 ? 1 : 2) : (iy < 0 ? 3 : 0);
   p.mv = 1;
+}
+// Bếp Chiến, giờ cao điểm: sàn bếp trôi như băng chuyền. Mỗi bếp có 3 làn, làn giữa chạy ngược 2 làn kia.
+// dirSign: 0 = sàn đứng yên, 1 = chiều đầu (làn trên và dưới đẩy ra cửa), -1 = đổi chiều.
+const SLIDE_LANES = { 2: 1, 3: 1, 5: -1, 6: -1, 8: 1, 9: 1 };
+function slideVX(x, y, dirSign) {
+  if (!dirSign || !MAPCFG || MAPCFG.name !== 'versus') return 0;
+  const tx = Math.floor(x), ty = Math.floor(y), team = teamOfX(tx), lane = SLIDE_LANES[ty];
+  if (team < 0 || !lane || tileAt(tx, ty) !== '.') return 0;
+  return lane * (team === 0 ? 1 : -1) * dirSign * VS.slideSpeed;
+}
+function driftBy(p, dirSign, dt) {
+  const vx = slideVX(p.x, p.y, dirSign);
+  if (!vx) return;
+  const nx = p.x + vx * dt;
+  if (canStand(nx, p.y)) p.x = nx;
 }
 // khu trước mặt nhân vật; nếu không có thì khu gần nhất trong tầm với
 function findTarget(p) {
@@ -128,11 +177,16 @@ function drawItem(ctx, it, cx, cy, s = 1) {
     if (it.g === 'glass') pic(ctx, 'glass' + it.f + (it.l ? 'L' : ''), () => ART.cup(it.f ? 1 : 0, it.l), -9, -26, 18, 25);
     else plasticCup(ctx, it.f, it.l);
   } else if (it.k === 'x') dirtyStack(ctx, it.n);
+  else if (it.k === 'i') {
+    const k = it.cut ? it.g + '_cut' : it.g;
+    pic(ctx, 'ing-' + k, () => ART.ing(k), -15, -28, 30, 30);
+  } else if (it.k === 'peel') pic(ctx, 'peel', ART.peel, -16, -22, 32, 24);
   ctx.restore();
 }
 
 /* ---------- Sàn (vẽ 1 lần vào canvas phụ) ---------- */
 let floorCanvas = null;
+const KITCHEN_TILE = { '-1': ['#E6DFCF', '#D9D0BC'], 0: ['#F6DCD3', '#ECC8BC'], 1: ['#D8E6F2', '#C5D6E6'] };
 function buildFloor() {
   const c = document.createElement('canvas');
   c.width = VW * 2; c.height = VH * 2;
@@ -144,10 +198,11 @@ function buildFloor() {
       const ch = tileAt(x, y), x0 = x * TW, y0 = OY + y * TH;
       if (ch === '_') {
         g.fillStyle = (x + y) % 2 ? '#BDB6AA' : '#B4AD9F'; g.fillRect(x0, y0, TW, TH);
-        if (y === 11) { g.fillStyle = '#8E877B'; g.fillRect(x0, y0 + TH - 6, TW, 6); }
-      } else if (ch === '.' && !(x > 10 && y > 1 && y < 9)) {
-        g.fillStyle = (x + y) % 2 ? '#E6DFCF' : '#D9D0BC'; g.fillRect(x0, y0, TW, TH);
-      } else if ('.,cD'.includes(ch)) {
+        if (y === ROWS - 1) { g.fillStyle = '#8E877B'; g.fillRect(x0, y0 + TH - 6, TW, 6); }
+      } else if (ch === '.' && !MAPCFG.tiled(x, y)) {
+        const pal = KITCHEN_TILE[teamOfX(x)];
+        g.fillStyle = pal[(x + y) % 2]; g.fillRect(x0, y0, TW, TH);
+      } else if ('.,cD:'.includes(ch)) {
         // gạch bông
         g.save(); g.beginPath(); g.rect(x0, y0, TW, TH); g.clip();
         g.fillStyle = '#EFE6D2'; g.fillRect(x0, y0, TW, TH);
@@ -156,6 +211,9 @@ function buildFloor() {
         g.fillStyle = '#C8352B'; g.beginPath(); g.ellipse(x0 + TW / 2, y0 + TH / 2, 5, 4, 0, 0, Math.PI * 2); g.fill();
         g.strokeStyle = 'rgba(0,0,0,.08)'; g.strokeRect(x0 + .5, y0 + .5, TW - 1, TH - 1);
         g.restore();
+        if (ch === ':') {          // ngưỡng cửa bếp
+          g.fillStyle = 'rgba(90,58,36,.35)'; g.fillRect(x0, y0 + 2, TW, 6); g.fillRect(x0, y0 + TH - 8, TW, 6);
+        }
       }
       if (ch === 'c') {   // ghế nhựa đỏ / xanh
         const col = (x + y) % 2 ? '#D9443A' : '#2F74B5', cx = x0 + TW / 2, cy = y0 + TH * .62;
@@ -172,16 +230,10 @@ function buildFloor() {
 }
 
 /* ---------- Khối (tường, quầy, bàn) ---------- */
-const BLOCKS = [];
-for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-  const ch = tileAt(x, y);
-  if (!'.,c_'.includes(ch)) BLOCKS.push({ x, y, ch, key: keyOf(x, y) });
-}
 function blockStyle(ch, x, y) {
-  if (ch === '#') {
-    const tall = y <= 1 || ((x === 10 || x === 19) && y < 9);
-    return { h: tall ? 46 : 20, top: '#A8782F', front: '#E3B04B', front2: '#C9922F' };
-  }
+  if (ch === '#') return { h: MAPCFG.tall(x, y) ? 46 : 20, top: '#A8782F', front: '#E3B04B', front2: '#C9922F' };
+  if (ch === 'M') return { h: 20, top: '#E9D6A8', front: '#3E9B48', front2: '#2A6E32' };
+  if (ch === 'K') return { h: 20, top: '#E9ECEE', front: '#8E5A35', front2: '#6C4024' };
   if (ch === 'g') return { h: 46, top: '#2E6B50', front: '#2E6B50', front2: '#1D4636', glass: true };
   if (ch === 'D') return { h: 46, top: '#5A3A24', front: '#5A3A24', front2: '#3B2618', door: true, glass: true };
   if (ch === 'T') return { h: 14, top: '#C98B4E', front: '#8E5A35', front2: '#6C4024' };
@@ -191,14 +243,14 @@ function blockStyle(ch, x, y) {
   return { h: 20, top: '#DCE1E5', front: '#A4ADB5', front2: '#7E8891' };
 }
 function drawBlock(ctx, b, V, now, target) {
-  const st = blockStyle(b.ch, b.x, b.y), x0 = b.x * TW, y0 = OY + b.y * TH, H = st.h;
+  const ch = tileAt(b.x, b.y), st = blockStyle(ch, b.x, b.y), x0 = b.x * TW, y0 = OY + b.y * TH, H = st.h;
   if (st.glass) ctx.globalAlpha = .4;
   const top = y0 - H, cx = x0 + TW / 2, cy = top + TH / 2;
   // mặt trước
   const gr = ctx.createLinearGradient(0, y0 + TH - H, 0, y0 + TH);
   gr.addColorStop(0, st.front); gr.addColorStop(1, st.front2);
   ctx.fillStyle = gr; ctx.fillRect(x0, y0 + TH - H, TW, H);
-  if (b.ch === 'g') {      // cửa kính
+  if (ch === 'g') {      // cửa kính
     ctx.fillStyle = '#BFE3F2'; ctx.fillRect(x0 + 5, y0 + TH - H + 6, TW - 10, H - 12);
     ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x0 + 12, y0 + TH - 10); ctx.lineTo(x0 + 26, y0 + TH - H + 10); ctx.stroke();
@@ -208,10 +260,10 @@ function drawBlock(ctx, b, V, now, target) {
   ctx.fillStyle = st.top; ctx.fillRect(x0, top, TW, TH);
   ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, top + .5, TW - 1, TH - 1);
   ctx.globalAlpha = 1;
-  if (H > 20 || b.ch === '#') return;
-  const locked = isLocked(b.ch, V.recipes), ts = V.tiles[b.key] || {};
+  if (H > 20 || ch === '#') return;
+  const locked = isLocked(ch, V.recipes), ts = V.tiles[b.key] || {}, team = teamOfX(b.x);
   // nội dung từng khu
-  switch (b.ch) {
+  switch (ch) {
     case 'B':
       ctx.fillStyle = '#9A6A3A'; rr(ctx, x0 + 4, top + 8, TW - 8, TH - 14, 4); ctx.fill();
       for (let i = 0; i < 3; i++) pic(ctx, 'braw', () => ART.bread('raw'), x0 + 4 + i * 4, top + 6 + i * 6, 34, 18);
@@ -269,21 +321,69 @@ function drawBlock(ctx, b, V, now, target) {
       ctx.fillStyle = '#B48A55'; ctx.fillRect(x0 + 10, top + 12, TW - 20, TH - 24);
       ctx.strokeStyle = '#8C6436'; ctx.strokeRect(x0 + 7.5, top + 8.5, TW - 15, TH - 17);
       break;
+    case 'K': {
+      pic(ctx, 'board', ART.board, cx - 19, top + 1, 38, 38);
+      if (ts.item) drawItem(ctx, ts.item, cx - 3, cy + 12, .85);
+      if (ts.item && !ts.item.cut && ts.p > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,.45)'; rr(ctx, x0 + 4, top - 10, TW - 8, 6, 3); ctx.fill();
+        ctx.fillStyle = '#F2A516'; rr(ctx, x0 + 4, top - 10, (TW - 8) * Math.min(1, ts.p), 6, 3); ctx.fill();
+      }
+      break;
+    }
+    case 'Z':
+      ctx.fillStyle = '#C3CAD1'; rr(ctx, x0 + 4, top + 4, TW - 8, TH - 8, 5); ctx.fill();
+      pic(ctx, 'ing-cha', () => ART.ing('cha'), cx - 15, top + 5, 30, 30);
+      pic(ctx, 'board', ART.board, x0 + TW - 18, top + 20, 16, 16);
+      break;
+    case 'N': {
+      pic(ctx, 'bananas', ART.bananas, cx - 16, top + 3, 32, 32);
+      const cd = V.peelCd ? V.peelCd[team] : 0;
+      if (cd > 0) { ctx.fillStyle = 'rgba(40,30,20,.5)'; ctx.fillRect(x0, top, TW, TH * Math.min(1, cd / VS.peelCooldown)); }
+      break;
+    }
+    case 'Q': {
+      const cd = V.bellCd ? V.bellCd[team] : 0;
+      pic(ctx, cd > 0 ? 'bell0' : 'bell1', () => ART.bell(!(cd > 0)), cx - 16, top + 2, 32, 32);
+      if (cd > 0) {
+        ctx.fillStyle = 'rgba(43,33,24,.8)'; rr(ctx, cx - 12, cy - 4, 24, 15, 7); ctx.fill();
+        ctx.fillStyle = '#FFF7E2'; ctx.font = `800 10px ${Lang.font()}`; ctx.textAlign = 'center'; ctx.fillText(Math.ceil(cd) + 's', cx, cy + 7);
+      }
+      break;
+    }
+    case 'M': {
+      // sạp chợ: mái sọc xanh trắng, nguyên liệu hiếm
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#FFF7E2' : '#3E9B48'; ctx.fillRect(x0 + i * 12, top - 12, 12, 10); }
+      ctx.fillStyle = 'rgba(0,0,0,.15)'; ctx.fillRect(x0, top - 2, TW, 3);
+      ctx.fillStyle = '#B57B38'; rr(ctx, x0 + 5, top + 10, TW - 10, TH - 14, 4); ctx.fill();
+      const mk = V.market && V.market[b.key];
+      if (mk && mk.it) {
+        const pulse = .5 + .5 * Math.sin(now * 6);
+        const glow = ctx.createRadialGradient(cx, cy + 4, 2, cx, cy + 4, 26);
+        glow.addColorStop(0, `rgba(255,212,71,${.55 + .35 * pulse})`); glow.addColorStop(1, 'rgba(255,212,71,0)');
+        ctx.fillStyle = glow; ctx.fillRect(x0 - 6, top - 6, TW + 12, TH + 12);
+        drawItem(ctx, mk.it, cx, cy + 14, 1.05);
+      } else if (mk && mk.warn > 0) {
+        ctx.fillStyle = 'rgba(255,212,71,' + (.4 + .4 * Math.sin(now * 10)) + ')';
+        ctx.font = `400 22px ${Lang.get() === 'ja' ? "'Dela Gothic One'" : "'Bungee'"}, sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText(String(Math.ceil(mk.warn)), cx, cy + 12);
+      }
+      break;
+    }
     case 'T': {
       const t = V.tables[TABLE_AT[b.key]];
-      if (t) {
+      if (t && t.dirty) {
         if (t.dirty.length) { ctx.save(); ctx.translate(cx, cy + 8); dirtyStack(ctx, t.dirty); ctx.restore(); }
         t.food.forEach((it, i) => drawItem(ctx, it, x0 + 14 + i * 20, cy + 10, .72));
       }
       break;
     }
     default:
-      if (BIN[b.ch]) {
+      if (BIN[ch]) {
         ctx.fillStyle = '#C3CAD1'; rr(ctx, x0 + 4, top + 4, TW - 8, TH - 8, 5); ctx.fill();
-        pic(ctx, 'ing-' + BIN[b.ch], () => ART.ing(BIN[b.ch]), cx - 15, top + 5, 30, 30);
+        pic(ctx, 'ing-' + BIN[ch], () => ART.ing(BIN[ch]), cx - 15, top + 5, 30, 30);
       }
   }
-  if (ts.item && (b.ch === '=')) drawItem(ctx, ts.item, cx, cy + 10);
+  if (ts.item && (ch === '=')) drawItem(ctx, ts.item, cx, cy + 10);
   if (locked) {
     ctx.fillStyle = 'rgba(40,30,20,.55)'; ctx.fillRect(x0, top, TW, TH);
     pic(ctx, 'lock', () => ART.lock().replace('currentColor', '#FFF7E2').replace('currentColor', '#FFF7E2'), cx - 8, cy - 8, 16, 16);
@@ -319,7 +419,8 @@ function cookerItem(ctx, ts, cx, cy, now) {
 // below = vẽ dưới chân (khách mang về đứng ngoài quầy, để không che bếp)
 function drawBubble(ctx, c, x, y, below) {
   const cw = 62, n = c.items.length, w = n * cw + 12, h = 94;
-  const bx = Math.max(4, Math.min(VW - w - 4, x - w / 2));
+  const lo = Math.max(4, VIEWX0 + 4), hi = Math.min(VW, VIEWX1) - w - 4;
+  const bx = Math.max(lo, Math.min(hi, x - w / 2));
   const by = below ? y + 12 : y - 78 - h;
   ctx.fillStyle = '#FFF7E2'; rr(ctx, bx, by, w, h, 12); ctx.fill();
   ctx.beginPath();
@@ -346,43 +447,154 @@ function drawBubble(ctx, c, x, y, below) {
   ctx.fillStyle = 'rgba(43,33,24,.12)'; rr(ctx, bx + 8, by + h - 11, w - 16, 6, 3); ctx.fill();
   ctx.fillStyle = r < .2 ? '#D9443A' : r < .45 ? '#F2A516' : '#3E9B48'; rr(ctx, bx + 8, by + h - 11, (w - 16) * r, 6, 3); ctx.fill();
 }
+// Bếp Chiến: bong bóng gọn hơn (vỉa hè chật), khách VIP viền vàng, khách giả có nhãn cho đội đã rung chuông
+function drawBubbleVS(ctx, c, x, y, side, myTeam) {
+  const cw = 50, n = c.items.length, w = n * cw + 10, h = 70;
+  const bx = side < 0 ? x + 18 - w : x - 18, by = y - 72 - h;
+  const gold = c.vip || c.fake != null;
+  ctx.fillStyle = gold ? '#FFF1C2' : '#FFF7E2'; rr(ctx, bx, by, w, h, 10); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x - 6, by + h - 1); ctx.lineTo(x, by + h + 8); ctx.lineTo(x + 6, by + h - 1); ctx.fill();
+  ctx.strokeStyle = gold ? '#D9A21A' : 'rgba(43,33,24,.35)'; ctx.lineWidth = gold ? 2.5 : 1.4; rr(ctx, bx, by, w, h, 10); ctx.stroke();
+  c.items.forEach((it, i) => {
+    const R = RECIPES[it.id], ix = bx + 5 + i * cw + cw / 2;
+    if (R.type === 'food') {
+      drawItem(ctx, { k: 'b', s: 'toast', i: R.ings }, ix, by + 30, 1.05);
+      R.ings.forEach((k, j) => pic(ctx, 'ing-' + k, () => ART.ing(k), ix - 22 + (j % 3) * 15, by + 33 + Math.floor(j / 3) * 14, 14, 14));
+    } else {
+      drawItem(ctx, { k: 'c', g: 'plastic', f: 1, l: R.lemon }, ix, by + 56, 1.35);
+    }
+    if (it.done) {
+      ctx.fillStyle = 'rgba(255,247,226,.8)'; ctx.fillRect(ix - cw / 2 + 2, by + 3, cw - 4, h - 15);
+      ctx.fillStyle = TEAMCOL[it.by] || '#3E9B48'; ctx.font = `800 24px ${Lang.font()}`; ctx.textAlign = 'center'; ctx.fillText('✓', ix, by + 40);
+    }
+  });
+  const r = Math.max(0, Math.min(1, c.pat / c.max));
+  ctx.fillStyle = 'rgba(43,33,24,.12)'; rr(ctx, bx + 7, by + h - 9, w - 14, 5, 2.5); ctx.fill();
+  ctx.fillStyle = r < .2 ? '#D9443A' : r < .45 ? '#F2A516' : '#3E9B48'; rr(ctx, bx + 7, by + h - 9, (w - 14) * r, 5, 2.5); ctx.fill();
+  if (gold) {
+    const tag = c.fake != null && c.fake === myTeam ? Lang.t('fakeTag') : 'VIP';
+    ctx.font = `800 10px ${Lang.font()}`; ctx.textAlign = 'center';
+    const tw = ctx.measureText(tag).width + 12;
+    ctx.fillStyle = c.fake != null && c.fake === myTeam ? TEAMCOL[myTeam] : '#D9A21A';
+    rr(ctx, bx + w / 2 - tw / 2, by - 8, tw, 14, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText(tag, bx + w / 2, by + 3);
+  }
+}
+
+/* ---------- Bóng tối (giờ cao điểm: mất điện) ---------- */
+let darkCv = null;
+function drawDark(ctx, V, disp, amount) {
+  const w = Math.ceil(VW / 2), h = Math.ceil(VH / 2);
+  if (!darkCv || darkCv.width !== w || darkCv.height !== h) { darkCv = document.createElement('canvas'); darkCv.width = w; darkCv.height = h; }
+  const g = darkCv.getContext('2d');
+  g.globalCompositeOperation = 'source-over';
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = `rgba(8,10,28,${.9 * amount})`; g.fillRect(0, 0, w, h);
+  g.globalCompositeOperation = 'destination-out';
+  const hole = (x, y, r) => {
+    const gr = g.createRadialGradient(x, y, r * .45, x, y, r);
+    gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  };
+  Object.keys(V.players).forEach(id => { const d = disp[id]; if (d) hole(d.x * TW / 2, (OY + d.y * TH - 30) / 2, 62); });
+  if (V.market) Object.values(V.market).forEach(m => { if (m.it) hole(m.x * TW / 2 + 12, (OY + m.y * TH) / 2, 26); });
+  g.globalCompositeOperation = 'source-over';
+  ctx.drawImage(darkCv, 0, 0, VW, VH);
+}
+
+/* ---------- Sàn trôi (giờ cao điểm): mũi tên chạy theo chiều băng chuyền ---------- */
+function drawSlide(ctx, dirSign, now) {
+  const sp = TW / 2;
+  for (const ys in SLIDE_LANES) {
+    const y = +ys, y0 = OY + y * TH, cy = y0 + TH * .4;              // hơi cao lên để quầy phía dưới không che mũi tên
+    for (let x = 0; x < COLS; x++) {
+      const vx = slideVX(x + .5, y + .5, dirSign);
+      if (!vx) continue;
+      const x0 = x * TW, s = Math.sign(vx), off = ((now * Math.abs(vx) * TW) % sp + sp) % sp;
+      ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, TW, TH); ctx.clip();
+      ctx.fillStyle = 'rgba(80,55,30,.12)'; ctx.fillRect(x0, y0, TW, TH);
+      ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (let k = -1; k <= 2; k++) {
+        const cx = s > 0 ? x0 + off + k * sp : x0 + TW - off - k * sp;
+        ctx.beginPath(); ctx.moveTo(cx - 5 * s, cy - 7); ctx.lineTo(cx + 3 * s, cy); ctx.lineTo(cx - 5 * s, cy + 7); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+}
 
 /* ---------- Vẽ cả cảnh ---------- */
 // V = trạng thái để vẽ; disp = vị trí hiển thị đã làm mượt; me = id người chơi trên máy này; target = khu đang nhắm
 function drawWorld(ctx, V, disp, me, target, now) {
   if (!floorCanvas) buildFloor();
   ctx.drawImage(floorCanvas, 0, 0, VW, VH);
+  if (V.slide) drawSlide(ctx, V.slide, now);
+  const vs = V.mode === 'versus', myTeam = vs && V.players[me] ? V.players[me].team : -1;
+  const pcol = p => (vs ? TEAMCOL[p.team] : PCOL[p.slot % 4]);
   const list = BLOCKS.map((b, i) => ({ y: b.y + 1, b, o: i }));
   Object.keys(V.players).forEach(id => { const d = disp[id]; if (d) list.push({ y: d.y, p: id }); });
   V.custs.forEach(c => { const d = disp['c' + c.id]; if (d) list.push({ y: d.y + (c.state === 'eat' || (c.state === 'wait' && c.type === 'dine') ? .05 : 0), c }); });
+  if (V.floor) V.floor.forEach(f => list.push({ y: f.y - .2, f }));
   list.sort((a, b) => a.y - b.y || (a.b ? 0 : 1) - (b.b ? 0 : 1) || (a.o || 0) - (b.o || 0));
   for (const e of list) {
     if (e.b) {
       drawBlock(ctx, e.b, V, now, target);
-      if (e.b.x === 19 && e.b.y === 1) shopSign(ctx);
-      if (e.b.x === 6 && e.b.y === 9) takeSign(ctx);
+      if (!vs && e.b.x === 19 && e.b.y === 1) shopSign(ctx);
+      if (!vs && e.b.x === 6 && e.b.y === 9) takeSign(ctx);
+      if (vs && e.b.x === COLS - 1 && e.b.y === 0) vsSigns(ctx);
+    } else if (e.f) {
+      const f = e.f, sx = f.x * TW, sy = OY + f.y * TH;
+      ell(ctx, sx, sy, 12, 4, 'rgba(0,0,0,.18)');
+      drawItem(ctx, f.it, sx, sy + 4, f.it.k === 'peel' ? 1 : .8);
     } else if (e.p) {
       const p = V.players[e.p], d = disp[e.p];
       const sx = d.x * TW, sy = OY + d.y * TH;
-      ell(ctx, sx, sy, 15, 5.5, null, PCOL[p.slot % 4], 2.5);
+      ell(ctx, sx, sy, 15, 5.5, null, pcol(p), 2.5);
       CHAR.draw(ctx, p.cfg, sx, sy, {
-        dir: d.dir, walk: d.mv ? now * 11 : 0, t: now, pose: p.pose,
+        dir: d.dir, walk: d.mv ? now * 11 : 0, t: now, pose: p.stun > 0 ? 'slip' : p.pose,
         held: p.held ? (g, hx, hy) => drawItem(g, p.held, hx, hy, .85) : null,
       });
+      if (p.stun > 0) {   // choáng: sao quay quanh đầu
+        for (let i = 0; i < 3; i++) {
+          const a = now * 6 + i * 2.1;
+          ctx.fillStyle = '#FFD447'; ctx.font = `800 13px ${Lang.font()}`; ctx.textAlign = 'center';
+          ctx.fillText('★', sx + Math.cos(a) * 16, sy - 72 + Math.sin(a) * 5);
+        }
+      }
     } else {
       const c = e.c, d = disp['c' + c.id];
       const sit = c.type === 'dine' && (c.state === 'wait' || c.state === 'eat');
       CHAR.draw(ctx, c.cfg, d.x * TW, OY + d.y * TH, { dir: d.dir, walk: d.mv ? now * 9 : 0, t: now, sit, mood: c.mood, scale: .92, eat: c.state === 'eat' });
+      if ((c.vip || c.fake != null) && c.state !== 'leave') {   // vương miện khách VIP
+        const hx = d.x * TW, hy = OY + d.y * TH - (sit ? 64 : 72);
+        ctx.fillStyle = '#F2C14E'; ctx.strokeStyle = '#A9771B'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(hx - 10, hy); ctx.lineTo(hx - 10, hy - 9); ctx.lineTo(hx - 5, hy - 4); ctx.lineTo(hx, hy - 11);
+        ctx.lineTo(hx + 5, hy - 4); ctx.lineTo(hx + 10, hy - 9); ctx.lineTo(hx + 10, hy); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
     }
   }
-  // lớp trên cùng: tên người chơi, bong bóng gọi món
+  // đồ đang bay (bị ném)
+  if (V.fly) V.fly.forEach(f => {
+    const k = f.d / Math.max(.01, f.max), lift = Math.sin(Math.PI * Math.min(1, k)) * 26;
+    const sx = f.x * TW, sy = OY + f.y * TH;
+    ell(ctx, sx, sy, 10, 3.5, 'rgba(0,0,0,.2)');
+    ctx.save(); ctx.translate(sx, sy - 18 - lift); ctx.rotate(f.d * 4); drawItem(ctx, f.it, 0, 10, .8); ctx.restore();
+  });
+  if (V.dark > 0) drawDark(ctx, V, disp, Math.min(1, V.dark));
+  // lớp trên cùng: bong bóng gọi món, tên người chơi
+  V.custs.forEach(c => {
+    const d = disp['c' + c.id];
+    if (!d || c.state !== 'wait' || d.x * TW < VIEWX0 - 20 || d.x * TW > VIEWX1 + 20) return;
+    if (vs) drawBubbleVS(ctx, c, d.x * TW, OY + d.y * TH + 8, d.x < COLS / 2 ? -1 : 1, myTeam);
+    else drawBubble(ctx, c, d.x * TW, OY + d.y * TH + (c.type === 'dine' ? 8 : 0), c.type === 'take');
+  });
   Object.keys(V.players).forEach(id => {
     const p = V.players[id], d = disp[id]; if (!d) return;
     const sx = d.x * TW, sy = OY + d.y * TH - 84, fz = Math.round(11 * UIZ);
     ctx.font = `800 ${fz}px ${Lang.font()}`; ctx.textAlign = 'center';
     const label = p.name + (id === me ? ' ★' : '');
     const w = ctx.measureText(label).width + 12;
-    ctx.fillStyle = PCOL[p.slot % 4]; rr(ctx, sx - w / 2, sy - fz - 1, w, fz + 5, (fz + 5) / 2); ctx.fill();
+    ctx.fillStyle = pcol(p); rr(ctx, sx - w / 2, sy - fz - 1, w, fz + 5, (fz + 5) / 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText(label, sx, sy);
     const h = p.held, ings = h && h.k === 'b' && h.s === 'toast' ? h.i : h && h.k === 'c' && h.l ? ['chanh'] : [];
     if (ings.length) {
@@ -390,10 +602,6 @@ function drawWorld(ctx, V, disp, me, target, now) {
       ctx.fillStyle = 'rgba(255,247,226,.95)'; rr(ctx, sx - gw / 2, gy, gw, s + 6, 7); ctx.fill();
       ings.forEach((k, j) => pic(ctx, 'ing-' + k, () => ART.ing(k), sx - gw / 2 + 4 + j * (s + 2), gy + 3, s, s));
     }
-  });
-  V.custs.forEach(c => {
-    const d = disp['c' + c.id];
-    if (d && c.state === 'wait') drawBubble(ctx, c, d.x * TW, OY + d.y * TH + (c.type === 'dine' ? 8 : 0), c.type === 'take');
   });
 }
 function shopSign(ctx) {
@@ -408,3 +616,18 @@ function takeSign(ctx) {
   ctx.fillStyle = '#FFD447'; ctx.font = `800 11px ${Lang.font()}`; ctx.textAlign = 'center';
   ctx.fillText('— ' + Lang.t('modeTake').toUpperCase() + ' —', x + w / 2, y + 8);
 }
+// biển tên 2 bếp và chợ (Bếp Chiến)
+function vsSigns(ctx) {
+  const font = `400 16px ${Lang.get() === 'ja' ? "'Dela Gothic One'" : "'Bungee'"}, sans-serif`;
+  const sign = (x0, x1, text, bg, edge, ink) => {
+    const x = x0 * TW + 10, w = (x1 - x0) * TW - 20, y = OY - 40;
+    ctx.fillStyle = bg; rr(ctx, x, y, w, 28, 6); ctx.fill();
+    ctx.strokeStyle = edge; ctx.lineWidth = 2; rr(ctx, x, y, w, 28, 6); ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = font; ctx.textAlign = 'center'; ctx.fillText(text, x + w / 2, y + 20);
+  };
+  sign(1, 9, Lang.t('team0').toUpperCase(), '#D9443A', '#95231C', '#FFD447');
+  sign(10, 15, Lang.t('marketSign').toUpperCase(), '#3E9B48', '#2A6E32', '#FFF7E2');
+  sign(16, 24, Lang.t('team1').toUpperCase(), '#2F74B5', '#22578A', '#FFF7E2');
+}
+
+useMap('coop');

@@ -8,16 +8,31 @@ const hideOverlays = () => $$('.overlay').forEach(o => { o.hidden = true; });
 /* ---------- Menu ---------- */
 function toMenu() {
   mode = null; playing = false; paused = false; finished = false; local = null; me = 'h';
-  // nền menu: quán còn trống, nhân vật của mình đứng giữa bếp
-  SIM.create([{ pid: 'h', name: charName(), cfg: charCfg(), slot: 0 }]);
-  V = SIM.S;
-  Object.assign(V.players.h, { x: 5.5, y: 6.6, dir: 0 });
-  disp = {};
+  menuBackdrop();
   renderMenu();
   show('menu');
 }
+// nền menu / phòng chờ: quán còn trống (bản đồ của chế độ đang chọn), nhân vật của mình đứng giữa bếp
+function menuBackdrop() {
+  applyMode(GMODE);
+  ENG.create([{ pid: 'h', name: charName(), cfg: charCfg(), slot: 0, team: 0 }]);
+  V = ENG.S;
+  Object.assign(V.players.h, { x: 5.5, y: 6.6, dir: 0 });
+  disp = {};
+}
+const neg = n => n ? '−' + n : '0';   // điểm bị trừ: 0 thì không ghi dấu trừ
+
+function setGMode(m) {
+  prog.gmode = m === 'versus' ? 'versus' : 'coop'; save();
+  if (mode === 'host') { GMODE = prog.gmode; menuBackdrop(); sendLobby(); renderLobby(); return; }
+  GMODE = prog.gmode;
+  toMenu();
+}
 function renderMenu() {
-  $('#menuBest').textContent = T('bestLine', { n: prog.best });
+  $$('[data-gm]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === GMODE)));
+  $('#modeDesc').textContent = T(GMODE === 'versus' ? 'modeVsDesc' : 'modeCoopDesc');
+  $('#btnSolo').textContent = T(GMODE === 'versus' ? 'soloVs' : 'solo');
+  $('#menuBest').textContent = GMODE === 'versus' ? T('vsWinsLine', { n: prog.vsWins }) : T('bestLine', { n: prog.best });
   $('#btnSound').textContent = T(prog.muted ? 'soundOff' : 'soundOn');
   $$('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === Lang.get())));
 }
@@ -33,13 +48,32 @@ function showMsg(text, busy) {
 }
 
 /* ---------- Chơi 1 mình: màn giới thiệu luật ---------- */
+const kbd = k => `<kbd>${k}</kbd>`;
+const krow = (keysHTML, label) => `<div class="krow"><span>${keysHTML}</span><em>${label}</em></div>`;
+function rulesVS() {
+  const P = VS.penalty, pen = (k, n) => `<li><span>${T(k)}</span><b>−${n}</b></li>`;
+  const feat = (icon, k) => `<li><span class="fi">${icon}</span><span>${T(k)}</span></li>`;
+  return `<p class="sub">${T('vsIntroSub')}</p>` +
+    `<div class="keys"><p class="eyebrow">${T('ctrlTitle')}</p>` +
+    krow(`${kbd('W')}${kbd('A')}${kbd('S')}${kbd('D')} / ${kbd('↑')}${kbd('←')}${kbd('↓')}${kbd('→')}`, T('ctrlMove')) +
+    krow(`${kbd('Space')} / ${kbd('J')}`, T('ctrlPick')) +
+    krow(`${kbd('E')} / ${kbd('K')}`, T('ctrlUse')) +
+    krow(T('ctrlChop'), kbd('E')) +
+    `<p class="sub">${T('ctrlTouchVs')}</p></div>` +
+    `<p class="eyebrow">${T('vsFeatures')}</p><ul class="feat-list">` +
+    feat(ART.ing('bo'), 'featMarket') + feat(ART.board(), 'featChop') + feat(ART.peel(), 'featPeel') +
+    feat(ART.bell(true), 'featBell') + feat('<b class="rush">!</b>', 'featRush') + '</ul>' +
+    `<p class="eyebrow">${T('penaltyTitle')}</p><ul class="pen-list">` +
+    pen('penWrong', P.wrong) + pen('penBurnt', P.burnt) + pen('penWaste', P.waste) + '</ul>';
+}
 function rulesHTML() {
+  if (GMODE === 'versus') return rulesVS();
   const P = GAME.penalty, pen = (k, n) => `<li><span>${T(k)}</span><b>−${n}</b></li>`;
   return `<p class="sub">${T('introSub')}</p>` +
     `<div class="keys"><p class="eyebrow">${T('ctrlTitle')}</p>` +
     `<div class="krow"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><em>${T('ctrlMove')}</em></div>` +
     `<div class="krow"><span><kbd>Space</kbd> / <kbd>E</kbd></span><em>${T('ctrlAct')}</em></div>` +
-    `<div class="krow"><span>${T('ctrlWash')}</span><em><kbd>Space</kbd></em></div>` +
+    `<div class="krow"><span>${T('ctrlWash')}</span><em><kbd>Space</kbd> / <kbd>E</kbd></em></div>` +
     `<div class="krow"><span><kbd>Esc</kbd></span><em>${T('ctrlPause')}</em></div>` +
     `<p class="sub">${T('ctrlTouch')}</p></div>` +
     `<p class="eyebrow">${T('penaltyTitle')}</p><ul class="pen-list">` +
@@ -47,8 +81,8 @@ function rulesHTML() {
 }
 function startSolo() {
   mode = 'solo'; me = 'h';
-  roster = [{ pid: 'h', name: charName(), cfg: cleanCfg(charCfg()), slot: 0 }];
-  $('#introBody').innerHTML = `<h2>${T('introTitle')}</h2>` + rulesHTML();
+  roster = [{ pid: 'h', name: charName(), cfg: cleanCfg(charCfg()), slot: 0, team: 0 }];
+  $('#introBody').innerHTML = `<h2>${T(GMODE === 'versus' ? 'vsPracticeTitle' : 'introTitle')}</h2>` + rulesHTML();
   show('intro');
 }
 
@@ -58,15 +92,39 @@ function renderLobby() {
   if ($('#lobby').hidden) return;
   const code = mode === 'host' && room ? room.code : lobbyCode;
   $('#lobbyCode').textContent = code || '·····';
-  $('#lobbyList').innerHTML = [0, 1, 2, 3].map(s => {
-    const r = roster.find(x => x.slot === s);
-    if (!r) return `<li class="empty"><i style="--pc:${PCOL[s]}"></i><span>—</span></li>`;
-    const tags = (r.pid === me ? `<em>${T('you')}</em>` : '') + (r.pid === 'h' ? `<em class="host">${T('hostTag')}</em>` : '');
-    return `<li><i style="--pc:${PCOL[s]}"></i><span>${esc(r.name)}</span>${tags}</li>`;
-  }).join('');
+  const tags = r => (r.pid === me ? `<em>${T('you')}</em>` : '') + (r.pid === 'h' ? `<em class="host">${T('hostTag')}</em>` : '');
+  $$('[data-rm]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.rm === GMODE)); b.disabled = mode !== 'host'; });
+  if (GMODE === 'versus') {
+    // chia 2 đội, mỗi đội tối đa 2 người
+    $('#lobbyList').innerHTML = [0, 1].map(tm => {
+      const list = roster.filter(r => r.team === tm);
+      const rows = [0, 1].map(i => {
+        const r = list[i];
+        if (!r) return `<li class="empty"><i style="--pc:${TEAMCOL[tm]}"></i><span>—</span></li>`;
+        return `<li><i style="--pc:${TEAMCOL[tm]}"></i><span>${esc(r.name)}</span>${tags(r)}</li>`;
+      }).join('');
+      return `<li class="team-head" style="--pc:${TEAMCOL[tm]}">${T('team' + tm)}</li>${rows}`;
+    }).join('');
+    const mine = roster.find(r => r.pid === me);
+    $('#btnTeam').hidden = !mine;
+    const n0 = roster.filter(r => r.team === 0).length, n1 = roster.filter(r => r.team === 1).length;
+    $('#lobbyNote').textContent = !n0 || !n1 ? T('vsPracticeNote') : n0 !== n1 ? T('vsBoostNote') : '';
+  } else {
+    $('#lobbyList').innerHTML = [0, 1, 2, 3].map(s => {
+      const r = roster.find(x => x.slot === s);
+      if (!r) return `<li class="empty"><i style="--pc:${PCOL[s]}"></i><span>—</span></li>`;
+      return `<li><i style="--pc:${PCOL[s]}"></i><span>${esc(r.name)}</span>${tags(r)}</li>`;
+    }).join('');
+    $('#btnTeam').hidden = true;
+    $('#lobbyNote').textContent = '';
+  }
   $('#lobbyRules').innerHTML = rulesHTML();
   $('#btnStartRoom').hidden = mode !== 'host';
   $('#lobbyWait').hidden = mode === 'host';
+}
+function requestTeamSwitch() {
+  if (mode === 'host') switchTeam('h');
+  else if (room) room.send({ t: 'team' });
 }
 function copyCode() {
   const code = $('#lobbyCode').textContent;
@@ -107,8 +165,29 @@ function showResult(r, record, oldBest) {
     (items.length ? `<p class="unlock">${esc(T('unlocked', { items: items.join(', ') }))}</p>` : '') +
     '<dl class="stats">' +
     stat('sBest', prog.best) + stat('sLevel', r.level) + stat('sHappy', r.served) + stat('sLeft', r.lost) +
-    stat('sWrong', r.wrong) + stat('sBurnt', r.burnt) + stat('sWashed', r.washed) + stat('sPenalty', '−' + r.penalties) + stat('sCombo', 'x' + r.comboMax) +
+    stat('sWrong', r.wrong) + stat('sBurnt', r.burnt) + stat('sWashed', r.washed) + stat('sPenalty', neg(r.penalties)) + stat('sCombo', 'x' + r.comboMax) +
     '</dl>' + buttons;
+  show('result');
+}
+
+// kết quả Bếp Chiến: đội thắng, điểm 2 đội, thống kê
+function showResultVS(r, myTeam) {
+  const A = r.teams[0], B = r.teams[1];
+  const head = r.practice ? T('vsPracticeDone') : r.winner === -1 ? T('vsDraw') : T('vsWin', { team: T('team' + r.winner) });
+  const sub = r.practice ? '' : r.winner === myTeam ? T('vsYouWin') : r.winner === -1 ? '' : T('vsYouLose');
+  const row = (k, a, b) => `<tr><th>${T(k)}</th><td>${a}</td><td>${b}</td></tr>`;
+  let buttons;
+  if (mode === 'host') buttons = `<button type="button" class="btn" data-ui="startRoom">${T('retryRoom')}</button><button type="button" class="btn ghost" data-ui="leave">${T('leave')}</button>`;
+  else if (mode === 'client') buttons = `<p class="sub center">${T('waitHost')}</p><button type="button" class="btn ghost" data-ui="leave">${T('leave')}</button>`;
+  else buttons = `<button type="button" class="btn" data-ui="go">${T('retry')}</button><button type="button" class="btn ghost" data-ui="menu">${T('toMenu')}</button>`;
+  $('#resultBody').innerHTML =
+    `<p class="eyebrow">${T('rEyebrow')}</p><h2>${esc(head)}</h2>` + (sub ? `<p class="sub center">${esc(sub)}</p>` : '') +
+    `<div class="vs-score"><span style="--pc:${TEAMCOL[0]}"><small>${T('team0')}</small><b>${A.score}</b></span><i>:</i>` +
+    `<span style="--pc:${TEAMCOL[1]}"><small>${T('team1')}</small><b>${B.score}</b></span></div>` +
+    `<table class="vs-stats"><thead><tr><th></th><td style="color:${TEAMCOL[0]}">●</td><td style="color:${TEAMCOL[1]}">●</td></tr></thead><tbody>` +
+    row('sHappy', A.served, B.served) + row('sVip', A.vip, B.vip) + row('sRare', A.rare, B.rare) + row('sTricks', A.tricks, B.tricks) +
+    row('sSlips', A.slips, B.slips) + row('sWrong', A.wrong, B.wrong) + row('sBurnt', A.burnt, B.burnt) + row('sPenalty', neg(A.penalties), neg(B.penalties)) +
+    '</tbody></table>' + `<p class="sub center">${T('vsWinsLine', { n: prog.vsWins })}</p>` + buttons;
   show('result');
 }
 
@@ -132,6 +211,7 @@ function renderCreator() {
   const O = CHAR.OPTS;
   $('#charStars').textContent = T('bestHave', { n: prog.best });
   $('#charOpts').innerHTML =
+    optRow(T('optBody'), O.bodies.map(b => chip('body', b, T('body_' + b), 0))) +
     optRow(T('optHair'), O.hairs.map(h => chip('hair', h, T('hair_' + h), 0))) +
     optRow(T('optHairColor'), O.hairColors.map(c => swatch('hairColor', c))) +
     optRow(T('optSkin'), O.skins.map(c => swatch('skin', c))) +
@@ -167,6 +247,9 @@ document.addEventListener('click', e => {
   Sound.unlock(); Sound.tap();
   switch (b.dataset.ui) {
     case 'solo': startSolo(); break;
+    case 'gmode': setGMode(b.dataset.gm); break;
+    case 'roomMode': if (mode === 'host') setGMode(b.dataset.rm); break;
+    case 'team': requestTeamSwitch(); break;
     case 'go': if (mode === 'solo' || mode === null) { mode = 'solo'; startGame(); } break;
     case 'create': createRoom(); break;
     case 'join': joinRoom($('#joinCode').value); break;
@@ -187,7 +270,6 @@ document.addEventListener('click', e => {
 });
 $('#joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(e.target.value); });
 $('#joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); });
-addEventListener('resize', fit);
 addEventListener('beforeunload', () => { if (room) { try { room.close(); } catch (e) { /* bỏ qua */ } } });
 
 /* ---------- Khởi động ---------- */
