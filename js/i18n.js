@@ -129,6 +129,7 @@ const I18N = {
     noteX: 'Bỏ đồ đang cầm. Vứt đồ ăn bị trừ điểm.', noteBin: 'Cầm bánh giòn tới để kẹp {ing}.',
     tbAct: 'Cầm<br>Đặt', tbHold: 'giữ: rửa bát',
     fullscreen: 'Toàn màn hình',
+    zoom: 'Phóng to / xem toàn cảnh', zoomNear: 'Phóng to: camera đi theo bạn', zoomAll: 'Xem toàn cảnh',
     rotateTip: 'Xoay ngang điện thoại để chơi rộng hơn',
     // tạm dừng, kết quả
     paused: 'Tạm dừng',
@@ -286,6 +287,7 @@ const I18N = {
     noteX: '持っているものを捨てる。料理を捨てると減点。', noteBin: '焼いたパンを持ってきて{ing}をはさむ。',
     tbAct: '持つ<br>置く', tbHold: '長押し：皿洗い',
     fullscreen: '全画面',
+    zoom: '拡大／全体表示', zoomNear: '拡大表示：カメラがあなたを追いかけます', zoomAll: '全体表示',
     rotateTip: 'スマホを横にすると広く遊べます',
     paused: '一時停止',
     resume: '再開する',

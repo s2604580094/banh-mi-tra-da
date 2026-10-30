@@ -46,11 +46,11 @@ const MAPS = {
   versus: {
     name: 'versus', map: MAP_VS,
     seat: (x, y) => ({ x, y: y - 1 }),                              // khách ngồi ghế phía trên bàn, quay mặt xuống
-    tall: (x, y) => y <= 1 || ((x === 9 || x === 15) && y < 10),
+    tall: (x, y) => y <= 1,                                         // tường ngăn bếp – vỉa hè thấp để nhìn rõ cửa
     tiled: (x, y) => x >= 10 && x <= 14,
   },
 };
-let TABLES = [], TABLE_AT = {}, BLOCKS = [];
+let TABLES = [], TABLE_AT = {}, BLOCKS = [], DOOR_POSTS = [];
 function useMap(name) {
   MAPCFG = MAPS[name] || MAPS.coop;
   MAP_CUR = MAPCFG.map; OVR = null;
@@ -62,6 +62,19 @@ function useMap(name) {
     if (ch === 'T') { TABLE_AT[keyOf(x, y)] = TABLES.length; TABLES.push({ x, y, seat: MAPCFG.seat(x, y) }); }
     if (!'.,c_:'.includes(ch)) BLOCKS.push({ x, y, ch, key: keyOf(x, y) });
   }));
+  // Bếp Chiến: 2 đầu mỗi cửa bếp có khung gỗ, trên đầu tường có đèn lồng màu đội
+  // yb = hàng ranh giới giữa cửa và khúc tường; north = khúc tường nằm phía trên cửa
+  DOOR_POSTS = [];
+  if (MAPCFG.name === 'versus') {
+    [9, 15].forEach(x => {
+      for (let y = 0; y < ROWS; y++) {
+        if (tileAt(x, y) !== ':' || tileAt(x, y - 1) === ':') continue;
+        let y1 = y; while (tileAt(x, y1 + 1) === ':') y1++;
+        const team = teamOfX(x);
+        DOOR_POSTS.push({ x, yb: y, team, north: true, key: y + .05 }, { x, yb: y1 + 1, team, north: false, key: y1 + 2.02 });
+      }
+    });
+  }
   floorCanvas = null;
 }
 
@@ -211,8 +224,18 @@ function buildFloor() {
         g.fillStyle = '#C8352B'; g.beginPath(); g.ellipse(x0 + TW / 2, y0 + TH / 2, 5, 4, 0, 0, Math.PI * 2); g.fill();
         g.strokeStyle = 'rgba(0,0,0,.08)'; g.strokeRect(x0 + .5, y0 + .5, TW - 1, TH - 1);
         g.restore();
-        if (ch === ':') {          // ngưỡng cửa bếp
-          g.fillStyle = 'rgba(90,58,36,.35)'; g.fillRect(x0, y0 + 2, TW, 6); g.fillRect(x0, y0 + TH - 8, TW, 6);
+        if (ch === ':') {          // cửa bếp: thảm chùi chân màu đội, nối liền qua 2 ô
+          const up = tileAt(x, y - 1) === ':', down = tileAt(x, y + 1) === ':', col = TEAMCOL[teamOfX(x)] || '#8E5A35';
+          const t0 = y0 + (up ? 0 : 5), t1 = y0 + TH - (down ? 0 : 5);
+          g.fillStyle = col; g.fillRect(x0 + 5, t0, TW - 10, t1 - t0);
+          g.fillStyle = 'rgba(255,255,255,.22)';
+          for (let k = x0 + 10; k < x0 + TW - 8; k += 8) g.fillRect(k, t0 + 3, 3, t1 - t0 - 6);
+          g.strokeStyle = 'rgba(255,247,226,.85)'; g.lineWidth = 2;
+          g.beginPath(); g.moveTo(x0 + 8, t0 + (up ? 0 : 3)); g.lineTo(x0 + 8, t1 - (down ? 0 : 3));
+          g.moveTo(x0 + TW - 8, t0 + (up ? 0 : 3)); g.lineTo(x0 + TW - 8, t1 - (down ? 0 : 3));
+          if (!up) { g.moveTo(x0 + 8, t0 + 3); g.lineTo(x0 + TW - 8, t0 + 3); }
+          if (!down) { g.moveTo(x0 + 8, t1 - 3); g.lineTo(x0 + TW - 8, t1 - 3); }
+          g.stroke();
         }
       }
       if (ch === 'c') {   // ghế nhựa đỏ / xanh
@@ -260,6 +283,21 @@ function drawBlock(ctx, b, V, now, target) {
   ctx.fillStyle = st.top; ctx.fillRect(x0, top, TW, TH);
   ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, top + .5, TW - 1, TH - 1);
   ctx.globalAlpha = 1;
+  if (ch === '#' && MAPCFG.name === 'versus') {
+    const team = teamOfX(b.x), wood = (yy, hh) => {
+      const gw = ctx.createLinearGradient(0, yy, 0, yy + hh);
+      gw.addColorStop(0, '#8A5530'); gw.addColorStop(1, '#5A3520');
+      ctx.fillStyle = gw; ctx.fillRect(x0, yy, TW, hh);
+    };
+    if (tileAt(b.x, b.y + 1) === ':') {          // khúc tường phía trên cửa: mặt trước thành khung gỗ
+      wood(y0 + TH - H, H);
+      ctx.fillStyle = TEAMCOL[team]; ctx.fillRect(x0, y0 + TH - 9, TW, 5);
+    }
+    if (tileAt(b.x, b.y - 1) === ':') {          // khúc tường phía dưới cửa: mép trên bọc gỗ
+      wood(top, 8);
+      ctx.fillStyle = TEAMCOL[team]; ctx.fillRect(x0, top + 8, TW, 3);
+    }
+  }
   if (H > 20 || ch === '#') return;
   const locked = isLocked(ch, V.recipes), ts = V.tiles[b.key] || {}, team = teamOfX(b.x);
   // nội dung từng khu
@@ -498,8 +536,30 @@ function drawDark(ctx, V, disp, amount) {
   };
   Object.keys(V.players).forEach(id => { const d = disp[id]; if (d) hole(d.x * TW / 2, (OY + d.y * TH - 30) / 2, 62); });
   if (V.market) Object.values(V.market).forEach(m => { if (m.it) hole(m.x * TW / 2 + 12, (OY + m.y * TH) / 2, 26); });
+  DOOR_POSTS.forEach(d => { const L = lanternPos(d); hole(L.x / 2, (L.y + 30) / 2, 24); });   // đèn lồng ở cửa vẫn sáng
   g.globalCompositeOperation = 'source-over';
   ctx.drawImage(darkCv, 0, 0, VW, VH);
+}
+
+/* ---------- Cửa bếp (Bếp Chiến): khung gỗ ở 2 đầu tường + đèn lồng màu đội ---------- */
+// đèn lồng đặt trên đầu khúc tường sát cửa
+function lanternPos(d) {
+  const wy = d.north ? d.yb - 1 : d.yb, h = tileAt(d.x, wy) === '#' ? blockStyle('#', d.x, wy).h : 20;
+  return { x: d.x * TW + TW / 2, y: OY + d.yb * TH - h - (d.north ? 12 : 9) };
+}
+function drawDoorPost(ctx, d, now) {
+  const col = TEAMCOL[d.team];
+  const L = lanternPos(d), sw = Math.sin(now * 2.2 + d.x + d.yb) * 1.2;
+  const glow = ctx.createRadialGradient(L.x, L.y, 2, L.x, L.y, 22);
+  glow.addColorStop(0, 'rgba(255,214,120,.55)'); glow.addColorStop(1, 'rgba(255,214,120,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(L.x, L.y, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(L.x, L.y); ctx.rotate(sw * .04);
+  ctx.fillStyle = '#F2C14E'; ctx.fillRect(-5, -11, 10, 3); ctx.fillRect(-5, 8, 10, 3);
+  ell(ctx, 0, 0, 9, 9, col, CHAR.shade(col, -.3), 1.2);
+  ctx.strokeStyle = 'rgba(255,240,200,.55)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(0, 0, 4, 9, 0, 0, Math.PI * 2); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke();
+  ctx.strokeStyle = '#F2C14E'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, 11); ctx.lineTo(sw, 17); ctx.stroke();
+  ctx.restore();
 }
 
 /* ---------- Sàn trôi (giờ cao điểm): mũi tên chạy theo chiều băng chuyền ---------- */
@@ -535,6 +595,7 @@ function drawWorld(ctx, V, disp, me, target, now) {
   Object.keys(V.players).forEach(id => { const d = disp[id]; if (d) list.push({ y: d.y, p: id }); });
   V.custs.forEach(c => { const d = disp['c' + c.id]; if (d) list.push({ y: d.y + (c.state === 'eat' || (c.state === 'wait' && c.type === 'dine') ? .05 : 0), c }); });
   if (V.floor) V.floor.forEach(f => list.push({ y: f.y - .2, f }));
+  DOOR_POSTS.forEach(d => list.push({ y: d.key, d }));
   list.sort((a, b) => a.y - b.y || (a.b ? 0 : 1) - (b.b ? 0 : 1) || (a.o || 0) - (b.o || 0));
   for (const e of list) {
     if (e.b) {
@@ -542,6 +603,8 @@ function drawWorld(ctx, V, disp, me, target, now) {
       if (!vs && e.b.x === 19 && e.b.y === 1) shopSign(ctx);
       if (!vs && e.b.x === 6 && e.b.y === 9) takeSign(ctx);
       if (vs && e.b.x === COLS - 1 && e.b.y === 0) vsSigns(ctx);
+    } else if (e.d) {
+      drawDoorPost(ctx, e.d, now);
     } else if (e.f) {
       const f = e.f, sx = f.x * TW, sy = OY + f.y * TH;
       ell(ctx, sx, sy, 12, 4, 'rgba(0,0,0,.18)');
