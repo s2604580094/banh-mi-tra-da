@@ -19,13 +19,14 @@ HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên �
 - Kéo **cần điều khiển** bên trái để đi. Đẩy nhẹ thì đi chậm, đẩy hết thì đi nhanh.
 - Bấm **nút đỏ** bên phải để cầm / đặt / dùng. Giữ nút đỏ ở bồn rửa để rửa bát.
 - Bếp Chiến có thêm **nút cam**: Tương tác / Ném (giữ ở thớt để thái).
-- Nút ⏸ để tạm dừng, nút ⛶ để chơi toàn màn hình (Android).
+- Nút 🔍 (kính lúp) để chuyển giữa **phóng to** (camera đi theo nhân vật) và **xem toàn cảnh**. Nút ⏸ để tạm dừng, nút ⛶ để chơi toàn màn hình (Android).
 
 **Điện thoại và iPad:** game tự chọn cách xếp màn hình cho cảnh quán to nhất.
 - Điện thoại cầm ngang: thẻ và nút điều khiển ở 2 bên cảnh quán.
 - iPad cầm ngang: thẻ và nút điều khiển ở dải phía dưới, cảnh quán to gần hết màn hình.
 - Cầm dọc: cảnh ở trên, thẻ ở giữa, nút ở dưới.
-- Khi màn hình nhỏ, cảnh được phóng to và camera đi theo nhân vật. Mũi tên ở mép màn hình (ví dụ `1 ▶`) báo có khách đang chờ ở phần quán ngoài khung; màu xanh / vàng / đỏ là độ kiên nhẫn còn lại.
+- Khi màn hình nhỏ, cảnh được phóng to và camera đi theo nhân vật (cả ngang lẫn dọc). Mũi tên ở mép màn hình (ví dụ `1 ▶`, `▲ 2`) báo có khách đang chờ ở phần quán ngoài khung; màu xanh / vàng / đỏ là độ kiên nhẫn còn lại.
+- Trên iPhone, chơi trong Safari bị thanh địa chỉ chiếm chỗ: nên **Thêm vào MH chính** (xem dưới) để cảnh to hơn.
 - Game tránh tai thỏ và thanh home của iPhone.
 
 **Chơi toàn màn hình như ứng dụng (nên làm trên điện thoại / iPad):**
@@ -55,6 +56,7 @@ HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên �
 Ở menu chọn tab **Bếp Chiến**. Đội nhiều điểm hơn sau 3 phút thắng.
 - **Đội:** Đội Đỏ (bếp trái) và Đội Xanh (bếp phải), mỗi đội 1–2 người. Trong phòng chờ bấm **Đổi đội**. Chơi được 2v2, 2v1, 1v1; đội ít người hơn nấu và thái nhanh hơn 35%. Chơi 1 mình là luyện tập.
 - **Khách chung:** khách ngồi ở vỉa hè giữa, đội nào mang đúng món tới trước thì được điểm.
+- **Cửa bếp:** mỗi bếp có 2 cửa rộng 2 ô (khung gỗ, đèn lồng và thảm màu đội) thông ra vỉa hè. Lúc mất điện, đèn lồng ở cửa vẫn sáng.
 - **Chợ giữa map:** cứ 13–19 giây một sạp đếm ngược 3 giây rồi bày **bò thượng hạng** hoặc **nấm cục**. Ai nhặt trước là của đội đó. Khách **VIP** (vương miện vàng) gọi món dùng các nguyên liệu này: 45 điểm + 15 thưởng.
 - **Thớt:** chả lụa, bò, nấm phải đặt lên thớt rồi giữ `E` (nút cam) khoảng 1,6 giây để thái.
 - **Vỏ chuối:** lấy ở nải chuối, ném (`E`) sang cửa bếp đội bạn hoặc thả xuống sàn. Ai giẫm phải trượt chân và đánh rơi đồ đang cầm. Mỗi đội tối đa 2 vỏ.

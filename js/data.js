@@ -61,18 +61,18 @@ const MAP = [
 // ---------- Chế độ BẾP CHIẾN (2 đội đối kháng) ----------
 // Bản đồ 25 cột × 13 hàng: bếp Đội Đỏ (trái), vỉa hè chung + chợ (giữa), bếp Đội Xanh (phải, đối xứng).
 // Ký tự mới:  K thớt (cắt thái)   Z khoanh chả (phải thái)   N nải chuối (lấy vỏ chuối)   Q chuông gọi khách VIP giả
-//             M sạp chợ (nguyên liệu hiếm xuất hiện)          :  cửa bếp     T bàn trên vỉa hè (khách ngồi ghế c phía trên)
+//             M sạp chợ (nguyên liệu hiếm xuất hiện)          :  cửa bếp (mỗi cửa rộng 2 ô)   T bàn trên vỉa hè (khách ngồi ghế c phía trên)
 const VS_LEFT = [
   '##########',
   '#BGGEPPJL#',
-  'X........#',
+  'X........:',
   'C........:',
   'K.=pZuro.#',
   'K........#',
   'N........#',
   'Q..====..#',
   '#........:',
-  '#........#',
+  '#........:',
   '##########',
 ];
 const VS_MID = ['#####', '#MMM#', ',,,,,', ',,,,,', ',c,c,', ',T,T,', ',,,,,', ',,,,,', ',c,c,', ',T,T,', '#,,,#'];

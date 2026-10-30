@@ -58,6 +58,11 @@ const TOUCH_LAYER = $('#touch'), OVERLAYS = $$('.overlay');
   ub.addEventListener('contextmenu', e => e.preventDefault());
 
   $('#btnPauseT').addEventListener('click', () => togglePause());
+  // kính lúp: phóng to (camera đi theo nhân vật) ↔ xem toàn cảnh
+  $('#btnZoom').addEventListener('click', () => {
+    prog.zoom = prog.zoom === 'all' ? 'near' : 'all'; save(); fit();
+    toast(T(prog.zoom === 'all' ? 'zoomAll' : 'zoomNear'));
+  });
   const fsBtn = $('#btnFull'), root = document.documentElement;
   const canFs = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
   fsBtn.hidden = !canFs;
