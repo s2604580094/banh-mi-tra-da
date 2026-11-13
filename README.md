@@ -80,7 +80,7 @@ Mở thư mục bằng VS Code → chuột phải `index.html` → **Open with L
 
 ## Cập nhật lên GitHub (cách tải file qua web)
 1. Vào repo → **Add file → Upload files** → kéo **toàn bộ nội dung bên trong** thư mục `banh-mi-tra-da` vào → **Commit changes**. File trùng tên sẽ được thay bằng bản mới.
-2. Kiểm tra thư mục `js` trên GitHub có đủ 13 file: `data.js`, `i18n.js`, `art.js`, `chars.js`, `world.js`, `sim.js`, `versus.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; và có thư mục `icons` (4 ảnh) cùng file `manifest.webmanifest` ở trang chính.
+2. Kiểm tra thư mục `js` trên GitHub có đủ 14 file: `data.js`, `i18n.js`, `art.js`, `sprites.js`, `chars.js`, `world.js`, `sim.js`, `versus.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; có thư mục `icons` (4 ảnh), thư mục `img` (ảnh nền menu và thư mục `spr` 32 hình) cùng file `manifest.webmanifest` ở trang chính.
 3. (Nên làm) Xóa các file cũ không còn dùng nếu vẫn còn: `vendor.js`, `game.js`, `ui.js`. Cách xóa: bấm vào file → nút `…` → **Delete file** → **Commit changes**.
 
 Sau 1–2 phút, link GitHub Pages sẽ chạy bản mới.
@@ -92,10 +92,12 @@ banh-mi-tra-da/
 ├── style.css       giao diện các màn hình
 ├── manifest.webmanifest  thông tin để "Thêm vào màn hình chính" (tên, biểu tượng, toàn màn hình)
 ├── icons/          biểu tượng ứng dụng
+├── img/            hình do Gemini vẽ: menu-bg.webp (nền menu), spr/*.webp (nguyên liệu, món, đồ dùng)
 └── js/
     ├── data.js     món, giá (= điểm), bản đồ quán, thời gian nấu, độ khó   ← chỉnh game ở đây
     ├── i18n.js     chữ tiếng Việt / tiếng Nhật                              ← sửa câu chữ ở đây
-    ├── art.js      hình vẽ SVG đồ ăn (bánh mì, nguyên liệu, cốc, bình trà…)
+    ├── art.js      hình vẽ SVG đồ ăn (bánh mì, nguyên liệu, cốc, bình trà…), dùng khi thiếu ảnh
+    ├── sprites.js  nạp hình chi tiết trong img/spr và dùng thay hình SVG
     ├── chars.js    vẽ nhân vật 2.5D 4 hướng + lựa chọn ngoại hình, mốc mở khóa
     ├── world.js    bản đồ, va chạm, vẽ quán theo góc nhìn chéo
     ├── sim.js      luật chơi Cùng bán: khách, nấu, phục vụ, rửa bát, điểm, cấp độ

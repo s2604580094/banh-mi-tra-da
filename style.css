@@ -69,6 +69,10 @@ button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 3px s
   padding: max(20px, env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
   overflow-y: auto; background: rgba(29, 70, 54, .82);
 }
+/* menu chính: tranh quán vỉa hè (Gemini vẽ), phủ tối nhẹ để chữ dễ đọc */
+#menu {
+  background: linear-gradient(rgba(29, 70, 54, .30), rgba(29, 70, 54, .50)), var(--menu-bg, url("img/menu-bg.webp")) center / cover no-repeat, #1D4636;
+}
 .overlay > :first-child { margin-top: auto; }
 .overlay > :last-child { margin-bottom: auto; }
 .card {
