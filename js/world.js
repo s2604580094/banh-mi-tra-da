@@ -129,6 +129,7 @@ function findTarget(p) {
 /* ---------- Ảnh SVG (từ art.js) dùng trên canvas ---------- */
 const IMGS = {};
 function pic(ctx, key, make, x, y, w, h) {
+  if (SPR.pic(ctx, key, x, y, w, h)) return;      // có hình chi tiết (sprites.js) thì dùng hình đó
   let im = IMGS[key];
   if (!im) {
     im = IMGS[key] = new Image();
@@ -150,6 +151,7 @@ function ell(ctx, cx, cy, rx, ry, fill, stroke, lw) {
 /* ---------- Vẽ đồ vật (đáy giữa tại cx, cy) ---------- */
 const plate = (ctx, cx, cy, rx) => { ell(ctx, cx, cy, rx, rx * .32, '#FFFFFF', '#2F74B5', 2); ell(ctx, cx, cy, rx * .62, rx * .18, null, '#DCE3EA', 1); };
 function plasticCup(ctx, f, l) {
+  if (SPR.pic(ctx, 'cup' + (f ? 1 : 0) + (f && l ? 'L' : ''), -10, -34, 20, 34)) return;
   ctx.beginPath(); ctx.moveTo(-7, -24); ctx.lineTo(7, -24); ctx.lineTo(5.5, 0); ctx.lineTo(-5.5, 0); ctx.closePath();
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
   if (f) { ctx.beginPath(); ctx.moveTo(-6.6, -19); ctx.lineTo(6.6, -19); ctx.lineTo(5.5, 0); ctx.lineTo(-5.5, 0); ctx.closePath(); ctx.fillStyle = '#B8641C'; ctx.fill(); }
@@ -185,7 +187,7 @@ function drawItem(ctx, it, cx, cy, s = 1) {
     }
   } else if (it.k === 'e') {
     if (it.s === 'raw') pic(ctx, 'egg-raw', () => ART.ing('trung'), -10, -20, 20, 20);
-    else pic(ctx, 'egg-' + it.s, () => ART.egg(it.s === 'fried' ? 'ready' : it.s === 'burnt' ? 'burnt' : 'cooking'), -13, -22, 26, 26);
+    else pic(ctx, 'egg-' + it.s, () => ART.egg(it.s === 'fried' ? 'ready' : it.s === 'burnt' ? 'burnt' : 'cooking'), -14, -22, 28, 26);
   } else if (it.k === 'c') {
     if (it.g === 'glass') pic(ctx, 'glass' + it.f + (it.l ? 'L' : ''), () => ART.cup(it.f ? 1 : 0, it.l), -9, -26, 18, 25);
     else plasticCup(ctx, it.f, it.l);
@@ -303,6 +305,7 @@ function drawBlock(ctx, b, V, now, target) {
   // nội dung từng khu
   switch (ch) {
     case 'B':
+      if (SPR.pic(ctx, 'basket', x0 + 1, top - 12, TW - 2, TH + 10)) break;   // rổ bánh mì
       ctx.fillStyle = '#9A6A3A'; rr(ctx, x0 + 4, top + 8, TW - 8, TH - 14, 4); ctx.fill();
       for (let i = 0; i < 3; i++) pic(ctx, 'braw', () => ART.bread('raw'), x0 + 4 + i * 4, top + 6 + i * 6, 34, 18);
       break;
