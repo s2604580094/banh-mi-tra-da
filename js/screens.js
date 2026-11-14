@@ -8,6 +8,7 @@ const hideOverlays = () => $$('.overlay').forEach(o => { o.hidden = true; });
 /* ---------- Menu ---------- */
 function toMenu() {
   mode = null; playing = false; paused = false; finished = false; local = null; me = 'h';
+  TEAM_FOOD = [prog.food, prog.food];
   menuBackdrop();
   renderMenu();
   show('menu');
@@ -22,6 +23,25 @@ function menuBackdrop() {
 }
 const neg = n => n ? '−' + n : '0';   // điểm bị trừ: 0 thì không ghi dấu trừ
 
+// Bếp Chiến: bản đồ phố cổ / 2 quán (chủ phòng chọn)
+function setVsMap(v) {
+  prog.vsMap = VSMAP = v === 'quan' ? 'quan' : 'pho'; save();
+  if (mode === 'host') { menuBackdrop(); sendLobby(); renderLobby(); return; }
+  toMenu();
+}
+// xe của mình (luyện tập / mặc định khi tạo phòng)
+function setMyFood(f) {
+  if (!FOODS[f]) return;
+  prog.food = f; save(); TEAM_FOOD = [f, f];
+  toMenu();
+}
+// trong phòng chờ: đổi xe của đội mình
+function requestFood(f) {
+  const r = roster.find(x => x.pid === me);
+  if (!r || !FOODS[f]) return;
+  prog.food = f; save();
+  if (mode === 'host') setTeamFood(r.team, f); else if (room) room.send({ t: 'food', food: f });
+}
 function setGMode(m) {
   prog.gmode = m === 'versus' ? 'versus' : 'coop'; save();
   if (mode === 'host') { GMODE = prog.gmode; menuBackdrop(); sendLobby(); renderLobby(); return; }
@@ -30,7 +50,11 @@ function setGMode(m) {
 }
 function renderMenu() {
   $$('[data-gm]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.gm === GMODE)));
-  $('#modeDesc').textContent = T(GMODE === 'versus' ? 'modeVsDesc' : 'modeCoopDesc');
+  const vs = GMODE === 'versus';
+  $('#modeDesc').textContent = T(vs ? (VSMAP === 'pho' ? 'modeVsDescPho' : 'modeVsDesc') : 'modeCoopDesc');
+  $('#menuMaps').hidden = $('#menuFood').hidden = !vs;
+  $$('[data-vm]', $('#menuMaps')).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vm === VSMAP)));
+  $$('[data-food]', $('#menuFood')).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.food === prog.food)));
   $('#btnSolo').textContent = T(GMODE === 'versus' ? 'soloVs' : 'solo');
   $('#menuBest').textContent = GMODE === 'versus' ? T('vsWinsLine', { n: prog.vsWins }) : T('bestLine', { n: prog.best });
   $('#btnSound').textContent = T(prog.muted ? 'soundOff' : 'soundOn');
@@ -94,7 +118,13 @@ function renderLobby() {
   $('#lobbyCode').textContent = code || '·····';
   const tags = r => (r.pid === me ? `<em>${T('you')}</em>` : '') + (r.pid === 'h' ? `<em class="host">${T('hostTag')}</em>` : '');
   $$('[data-rm]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.rm === GMODE)); b.disabled = mode !== 'host'; });
+  $('#roomMaps').hidden = GMODE !== 'versus';
+  $$('[data-vm]', $('#roomMaps')).forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.vm === VSMAP)); b.disabled = mode !== 'host'; });
   if (GMODE === 'versus') {
+    const me0 = roster.find(r => r.pid === me);
+    // mỗi đội chọn xe: người trong đội bấm được, người đội kia chỉ xem
+    const pickFood = tm => `<span class="food-pick"><em>${T('teamCart')}</em>${FOOD_IDS.map(f =>
+      `<button type="button" class="fchip" data-ui="food" data-food="${f}" aria-pressed="${TEAM_FOOD[tm] === f}"${me0 && me0.team === tm ? '' : ' disabled'}>${T('food_' + f)}</button>`).join('')}</span>`;
     // chia 2 đội, mỗi đội tối đa 2 người
     $('#lobbyList').innerHTML = [0, 1].map(tm => {
       const list = roster.filter(r => r.team === tm);
@@ -103,7 +133,7 @@ function renderLobby() {
         if (!r) return `<li class="empty"><i style="--pc:${TEAMCOL[tm]}"></i><span>—</span></li>`;
         return `<li><i style="--pc:${TEAMCOL[tm]}"></i><span>${esc(r.name)}</span>${tags(r)}</li>`;
       }).join('');
-      return `<li class="team-head" style="--pc:${TEAMCOL[tm]}">${T('team' + tm)}</li>${rows}`;
+      return `<li class="team-head" style="--pc:${TEAMCOL[tm]}">${T('team' + tm)}${pickFood(tm)}</li>${rows}`;
     }).join('');
     const mine = roster.find(r => r.pid === me);
     $('#btnTeam').hidden = !mine;
@@ -249,6 +279,10 @@ document.addEventListener('click', e => {
     case 'solo': startSolo(); break;
     case 'gmode': setGMode(b.dataset.gm); break;
     case 'roomMode': if (mode === 'host') setGMode(b.dataset.rm); break;
+    case 'vsmap': setVsMap(b.dataset.vm); break;
+    case 'roomMap': if (mode === 'host') setVsMap(b.dataset.vm); break;
+    case 'myfood': setMyFood(b.dataset.food); break;
+    case 'food': requestFood(b.dataset.food); break;
     case 'team': requestTeamSwitch(); break;
     case 'go': if (mode === 'solo' || mode === null) { mode = 'solo'; startGame(); } break;
     case 'create': createRoom(); break;

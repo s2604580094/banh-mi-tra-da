@@ -2,7 +2,7 @@
 
 Web game nấu ăn: bạn và tối đa 3 người bạn nhập vai chủ quán bánh mì – trà đá vỉa hè. Mỗi lượt chơi dài 3 phút. Có 2 chế độ:
 - **Cùng bán:** cả nhóm chung một quán, nướng bánh, phục vụ khách mang về và khách ăn tại quán, rửa bát, tính chung điểm.
-- **Bếp Chiến (2v2):** hai đội mở hai quán đối diện nhau, tranh khách và nguyên liệu hiếm ở chợ giữa, ném vỏ chuối, rung chuông VIP giả.
+- **Bếp Chiến (2v2):** hai đội đối đầu, tranh khách và nguyên liệu hiếm ở chợ giữa, ném vỏ chuối, rung chuông VIP giả. Có 2 bản đồ: **Phố cổ** (hai xe đẩy ở hai bên vỉa hè phố cổ Hà Nội) và **Hai quán** (hai bếp đối diện nhau).
 
 HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên điện thoại / máy tính bảng chơi bằng điều khiển ảo (cầm ngang hay dọc đều được). Có 2 ngôn ngữ: tiếng Nhật (mặc định) và tiếng Việt.
 
@@ -54,11 +54,17 @@ HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên �
 
 ## Bếp Chiến Hỗn Loạn (2v2)
 Ở menu chọn tab **Bếp Chiến**. Đội nhiều điểm hơn sau 3 phút thắng.
+- **Bản đồ:** chọn **Phố cổ** hoặc **Hai quán** ở menu (chơi online thì chủ phòng chọn trong phòng chờ).
+  - **Phố cổ:** hai xe đẩy của hai đội ở hai bên vỉa hè đối diện nhau, giữa là phố đi bộ với bàn ghế nhựa cho khách. Xung quanh có nhà ống mái ngói, cột điện dây chằng chịt, đèn lồng, xe máy chạy ngang, gánh hàng rong, chim sẻ.
+  - **Hai quán:** bản đồ cũ, mỗi đội một bếp có tường và 2 cửa.
+- **Món của đội:** mỗi đội tự chọn bán **bánh mì**, **xôi** hoặc **bún chả** (ở menu, hoặc bấm chip món trên đầu cột đội mình trong phòng chờ). Khách chỉ gọi món của những đội đang có mặt; trà đá dùng chung.
+  - **Xôi:** lấy xôi ở tủ kính → hấp trong chõ → thêm ruốc, lạp xưởng, đậu xanh, hành phi, trứng. Món: xôi xéo, xôi trứng, xôi lạp xưởng; VIP: xôi gà ta, xôi xá xíu.
+  - **Bún chả:** lấy chả ở tủ kính → nướng trên bếp than → thêm bún, rau sống, tỏi ớt, đu đủ xanh, đồ chua, nem rán (rán trên chảo). Món: bún chả, bún nem, bún chả đầy đủ; VIP: bún chả nem cua bể, bún chả heo đen.
 - **Đội:** Đội Đỏ (bếp trái) và Đội Xanh (bếp phải), mỗi đội 1–2 người. Trong phòng chờ bấm **Đổi đội**. Chơi được 2v2, 2v1, 1v1; đội ít người hơn nấu và thái nhanh hơn 35%. Chơi 1 mình là luyện tập.
 - **Khách chung:** khách ngồi ở vỉa hè giữa, đội nào mang đúng món tới trước thì được điểm.
 - **Cửa bếp:** mỗi bếp có 2 cửa rộng 2 ô (khung gỗ, đèn lồng và thảm màu đội) thông ra vỉa hè. Lúc mất điện, đèn lồng ở cửa vẫn sáng.
-- **Chợ giữa map:** cứ 13–19 giây một sạp đếm ngược 3 giây rồi bày **bò thượng hạng** hoặc **nấm cục**. Ai nhặt trước là của đội đó. Khách **VIP** (vương miện vàng) gọi món dùng các nguyên liệu này: 45 điểm + 15 thưởng.
-- **Thớt:** chả lụa, bò, nấm phải đặt lên thớt rồi giữ `E` (nút cam) khoảng 1,6 giây để thái.
+- **Chợ giữa map:** cứ 13–19 giây một sạp đếm ngược 3 giây rồi bày nguyên liệu hiếm hợp với món của hai đội (bánh mì: **bò thượng hạng**, **nấm cục**; xôi: **gà ta**, **xá xíu**; bún chả: **nem cua bể**, **ba chỉ heo đen**). Ai nhặt trước là của đội đó. Khách **VIP** (vương miện vàng) gọi món dùng các nguyên liệu này: 45 điểm + 15 thưởng.
+- **Thớt:** chả lụa (lạp xưởng với xôi, đu đủ xanh với bún chả) và nguyên liệu hiếm phải đặt lên thớt rồi giữ `E` (nút cam) khoảng 1,6 giây để thái.
 - **Vỏ chuối:** lấy ở nải chuối, ném (`E`) sang cửa bếp đội bạn hoặc thả xuống sàn. Ai giẫm phải trượt chân và đánh rơi đồ đang cầm. Mỗi đội tối đa 2 vỏ.
 - **Chuông VIP giả:** rung chuông trong bếp mình (hồi 20 giây). Đội bạn mang món tới khách giả thì mất món, đội rung chuông +10.
 - **Giờ cao điểm (30 giây cuối):** khách đến dồn dập, mất điện 2 lần, sàn bếp trôi như băng chuyền khoảng 7 giây (giữa chừng đổi chiều), khay nguyên liệu trong cả hai bếp bị đảo chỗ.
@@ -80,7 +86,7 @@ Mở thư mục bằng VS Code → chuột phải `index.html` → **Open with L
 
 ## Cập nhật lên GitHub (cách tải file qua web)
 1. Vào repo → **Add file → Upload files** → kéo **toàn bộ nội dung bên trong** thư mục `banh-mi-tra-da` vào → **Commit changes**. File trùng tên sẽ được thay bằng bản mới.
-2. Kiểm tra thư mục `js` trên GitHub có đủ 14 file: `data.js`, `i18n.js`, `art.js`, `sprites.js`, `chars.js`, `world.js`, `sim.js`, `versus.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; có thư mục `icons` (4 ảnh), thư mục `img` (ảnh nền menu và thư mục `spr` 32 hình) cùng file `manifest.webmanifest` ở trang chính.
+2. Kiểm tra thư mục `js` trên GitHub có đủ 15 file: `data.js`, `i18n.js`, `art.js`, `sprites.js`, `chars.js`, `world.js`, `pho.js`, `sim.js`, `versus.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; có thư mục `icons` (4 ảnh), thư mục `img` (ảnh nền menu và thư mục `spr` 83 hình) cùng file `manifest.webmanifest` ở trang chính.
 3. (Nên làm) Xóa các file cũ không còn dùng nếu vẫn còn: `vendor.js`, `game.js`, `ui.js`. Cách xóa: bấm vào file → nút `…` → **Delete file** → **Commit changes**.
 
 Sau 1–2 phút, link GitHub Pages sẽ chạy bản mới.
@@ -92,7 +98,7 @@ banh-mi-tra-da/
 ├── style.css       giao diện các màn hình
 ├── manifest.webmanifest  thông tin để "Thêm vào màn hình chính" (tên, biểu tượng, toàn màn hình)
 ├── icons/          biểu tượng ứng dụng
-├── img/            hình do Gemini vẽ: menu-bg.webp (nền menu), spr/*.webp (nguyên liệu, món, đồ dùng)
+├── img/            hình do Gemini vẽ: menu-bg.webp (nền menu), spr/*.webp (nguyên liệu, món, đồ dùng, đồ trang trí phố)
 └── js/
     ├── data.js     món, giá (= điểm), bản đồ quán, thời gian nấu, độ khó   ← chỉnh game ở đây
     ├── i18n.js     chữ tiếng Việt / tiếng Nhật                              ← sửa câu chữ ở đây
@@ -100,6 +106,7 @@ banh-mi-tra-da/
     ├── sprites.js  nạp hình chi tiết trong img/spr và dùng thay hình SVG
     ├── chars.js    vẽ nhân vật 2.5D 4 hướng + lựa chọn ngoại hình, mốc mở khóa
     ├── world.js    bản đồ, va chạm, vẽ quán theo góc nhìn chéo
+    ├── pho.js      bản đồ Phố cổ: vỉa hè, nhà ống, xe đẩy, xe máy, dây điện, đèn lồng
     ├── sim.js      luật chơi Cùng bán: khách, nấu, phục vụ, rửa bát, điểm, cấp độ
     ├── versus.js   luật chơi Bếp Chiến 2v2: chợ, thớt, vỏ chuối, chuông giả, giờ cao điểm
     ├── net.js      kết nối phòng online (PeerJS) và chế độ thử ?local
@@ -111,7 +118,8 @@ banh-mi-tra-da/
 ```
 
 ## Gợi ý chỉnh
-- **Bố cục quán:** sửa `MAP` trong `data.js`. Mỗi ký tự là một ô, ý nghĩa ký tự ghi ngay phía trên `MAP`. Bản đồ Bếp Chiến là `VS_LEFT` (bếp trái, bếp phải tự lật đối xứng) và `VS_MID` (chợ và vỉa hè).
+- **Bố cục quán:** sửa `MAP` trong `data.js`. Mỗi ký tự là một ô, ý nghĩa ký tự ghi ngay phía trên `MAP`. Bản đồ Bếp Chiến là `VS_LEFT` (bếp trái, bếp phải tự lật đối xứng) và `VS_MID` (chợ và vỉa hè); bản đồ Phố cổ là `PHO_LEFT`.
+- **Món của đội:** khay nguyên liệu, nguyên liệu hiếm và thực đơn từng món nằm ở `FOODS` trong `data.js`; công thức có trường `food`.
 - **Độ khó Bếp Chiến:** sửa `VS` trong `data.js` (thời gian, tốc độ khách, hồi chuông, số vỏ chuối, thưởng VIP…).
 - **Độ khó:** sửa `GAME` và `COOK` trong `data.js`.
 - **Thêm món:** thêm vào `RECIPES` (tên ghi cả `vi` và `ja`), rồi thêm món đó vào `GAME.unlocks`.

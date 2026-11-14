@@ -22,15 +22,19 @@ prog.muted = !!prog.muted;
 const save = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(prog)); } catch (e) { /* trình duyệt chặn lưu */ } };
 prog.gmode = prog.gmode === 'versus' ? 'versus' : 'coop';
 prog.vsWins = prog.vsWins || 0;
+prog.vsMap = prog.vsMap === 'quan' ? 'quan' : 'pho';                       // bản đồ Bếp Chiến: phố cổ / 2 quán
+prog.food = FOODS[prog.food] ? prog.food : 'banhmi';                       // xe mình hay chọn: bánh mì / xôi / bún chả
 const charCfg = () => ({ ...CHAR.DEF, ...(prog.char || {}) });
 
 /* ---------- Chế độ chơi: 'coop' (Cùng bán) hoặc 'versus' (Bếp Chiến) ---------- */
 let GMODE = prog.gmode;
+let VSMAP = prog.vsMap;
+TEAM_FOOD = [prog.food, prog.food];
 let ENG = GMODE === 'versus' ? SIMV : SIM;           // bộ luật đang dùng
 function applyMode(m) {
   GMODE = m === 'versus' ? 'versus' : 'coop';
   ENG = GMODE === 'versus' ? SIMV : SIM;
-  useMap(GMODE);
+  useMap(GMODE === 'versus' ? (VSMAP === 'quan' ? 'versus' : 'pho') : 'coop');
   if (typeof fit === 'function') fit();
 }
 const charName = () => (prog.char && prog.char.name) || T('defName');
@@ -196,7 +200,7 @@ function startGame() {          // máy chủ phòng hoặc chơi 1 mình
   playing = true;
   hideOverlays();
   maybeRotateTip();
-  if (mode === 'host') room.broadcast({ t: 'start', gm: GMODE });
+  if (mode === 'host') room.broadcast({ t: 'start', gm: GMODE, vm: VSMAP, foods: TEAM_FOOD });
 }
 function finish(result) {
   if (finished) return;
@@ -227,7 +231,7 @@ async function createRoom() {
   showMsg(T('connecting'), true);
   try { room = await Net.host({ join: () => {}, leave: onLeave, msg: onHostMsg }); }
   catch (e) { room = null; return showMsg(T('errNet')); }
-  mode = 'host'; me = 'h';
+  mode = 'host'; me = 'h'; TEAM_FOOD = [prog.food, prog.food];
   roster = [{ pid: 'h', name: charName(), cfg: cleanCfg(charCfg()), slot: 0, team: 0 }];
   showLobby();
 }
@@ -241,6 +245,7 @@ function onHostMsg(id, m) {
     roster.push({ pid: id, name: String(m.name || '?').slice(0, 12), cfg: cleanCfg(m.cfg), slot, team });
     sendLobby(); renderLobby();
   } else if (m.t === 'team') { if (!playing) switchTeam(id); }
+  else if (m.t === 'food') { const r = roster.find(x => x.pid === id); if (r && !playing) setTeamFood(r.team, m.food); }
   else if (!playing) return;
   else if (m.t === 'pos') ENG.setPos(id, m.x, m.y, m.d, m.m);
   else if (m.t === 'act') ENG.interact(id, m.k == null ? null : String(m.k));
@@ -261,7 +266,13 @@ function onLeave(id) {
   if (playing) ENG.removePlayer(id);
   sendLobby(); renderLobby();
 }
-function sendLobby() { if (room) roster.forEach(r => { if (r.pid !== 'h') room.send(r.pid, { t: 'lobby', roster, you: r.pid, code: room.code, gm: GMODE }); }); }
+function sendLobby() { if (room) roster.forEach(r => { if (r.pid !== 'h') room.send(r.pid, { t: 'lobby', roster, you: r.pid, code: room.code, gm: GMODE, vm: VSMAP, foods: TEAM_FOOD }); }); }
+// đổi món của 1 đội (người trong đội đó bấm). Máy chủ giữ danh sách, gửi lại cho cả phòng
+function setTeamFood(team, food) {
+  if (!FOODS[food] || (team !== 0 && team !== 1)) return;
+  TEAM_FOOD = TEAM_FOOD.slice(); TEAM_FOOD[team] = food;
+  menuBackdrop(); sendLobby(); renderLobby();
+}
 
 async function joinRoom(code) {
   showMsg(T('connecting'), true);
@@ -275,12 +286,19 @@ function onClientMsg(m) {
   switch (m.t) {
     case 'lobby':
       me = m.you; roster = m.roster; lobbyCode = m.code;
-      if (m.gm && m.gm !== GMODE && !playing) { GMODE = m.gm; menuBackdrop(); }
+      if (Array.isArray(m.foods) && m.foods.join() !== TEAM_FOOD.join()) {
+        TEAM_FOOD = m.foods.map(f => (FOODS[f] ? f : 'banhmi'));
+        if (!playing) menuBackdrop();
+      }
+      if (!playing && ((m.gm && m.gm !== GMODE) || (m.vm && m.vm !== VSMAP))) { GMODE = m.gm || GMODE; VSMAP = m.vm || VSMAP; menuBackdrop(); }
       if (!playing && !finished) showLobby();
       renderLobby();
       break;
     case 'deny': leaveRoom(); showMsg(T(m.why)); break;
-    case 'start': resetView(); applyMode(m.gm || 'coop'); V = null; local = null; playing = true; hideOverlays(); maybeRotateTip(); break;
+    case 'start':
+      resetView(); VSMAP = m.vm || VSMAP;
+      if (Array.isArray(m.foods)) TEAM_FOOD = m.foods.map(f => (FOODS[f] ? f : 'banhmi'));
+      applyMode(m.gm || 'coop'); V = null; local = null; playing = true; hideOverlays(); maybeRotateTip(); break;
     case 'snap':
       if (!playing && !finished) break;
       V = m.s;
@@ -468,7 +486,7 @@ function render(t, dt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#1D4636'; ctx.fillRect(0, 0, cv.width, cv.height);
   if (!V) return;
-  if (V.mode === 'versus') OVR = V.ovr || null;
+  if (V.mode === 'versus') { OVR = V.ovr || null; if (V.food && playing) TEAM_FOOD = V.food; }
   updateDisp(dt);
   const target = playing && local && V.phase === 'play' ? findTarget(local) : null;
   const focus = disp[me] || { x: 10, y: 6 };
