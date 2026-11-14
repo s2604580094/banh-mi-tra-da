@@ -1,13 +1,14 @@
 /* screens.js — các màn hình: menu, hướng dẫn, phòng chờ, tạo nhân vật, tạm dừng, kết quả; khởi động game */
 'use strict';
 
-let lobbyCode = '';
+let lobbyCode = '', lobbyBotLv = 'normal';     // lobbyBotLv: độ khó bot do chủ phòng chọn (máy khách chỉ xem)
 const show = id => $$('.overlay').forEach(o => { o.hidden = o.id !== id; });
 const hideOverlays = () => $$('.overlay').forEach(o => { o.hidden = true; });
 
 /* ---------- Menu ---------- */
 function toMenu() {
   mode = null; playing = false; paused = false; finished = false; local = null; me = 'h';
+  BOTS.stop();
   TEAM_FOOD = [prog.food, prog.food];
   menuBackdrop();
   renderMenu();
@@ -36,9 +37,10 @@ function setMyFood(f) {
   toMenu();
 }
 // trong phòng chờ: đổi xe của đội mình
-function requestFood(f) {
+function requestFood(f, team) {
   const r = roster.find(x => x.pid === me);
   if (!r || !FOODS[f]) return;
+  if (mode === 'host' && team != null && team !== r.team) return setTeamFood(team, f);   // đội toàn bot: chủ phòng chọn hộ
   prog.food = f; save();
   if (mode === 'host') setTeamFood(r.team, f); else if (room) room.send({ t: 'food', food: f });
 }
@@ -105,9 +107,43 @@ function rulesHTML() {
 }
 function startSolo() {
   mode = 'solo'; me = 'h';
-  roster = [{ pid: 'h', name: charName(), cfg: cleanCfg(charCfg()), slot: 0, team: 0 }];
-  $('#introBody').innerHTML = `<h2>${T(GMODE === 'versus' ? 'vsPracticeTitle' : 'introTitle')}</h2>` + rulesHTML();
+  roster = soloRoster();
+  renderIntro();
   show('intro');
+}
+function renderIntro() {
+  $('#introBody').innerHTML = `<h2>${T(GMODE === 'versus' ? 'vsPracticeTitle' : 'introTitle')}</h2>` + botsHTML() + rulesHTML();
+}
+// chơi 1 mình: mình + bot theo cài đặt (Bếp Chiến: bot cùng đội ở Đội Đỏ, bot đội bạn ở Đội Xanh)
+function soloRoster() {
+  const B = prog.bots, r = [{ pid: 'h', name: charName(), cfg: cleanCfg(charCfg()), slot: 0, team: 0 }];
+  if (GMODE === 'versus') {
+    for (let i = 0; i < B.mate; i++) r.push(BOTS.make(r, 0, r.length));
+    for (let i = 0; i < B.foe; i++) r.push(BOTS.make(r, 1, r.length));
+    TEAM_FOOD = [prog.food, B.foeFood];
+  } else for (let i = 0; i < B.coop; i++) r.push(BOTS.make(r, 0, r.length));
+  return r;
+}
+// ô chọn bot trên màn giới thiệu (chơi 1 mình)
+function botsHTML() {
+  const B = prog.bots, vs = GMODE === 'versus';
+  const chip = (ui, attrs, on, label) => `<button type="button" class="fchip" data-ui="${ui}" ${attrs} aria-pressed="${on}">${label}</button>`;
+  const nums = (k, max) => Array.from({ length: max + 1 }, (_, n) => chip('botn', `data-k="${k}" data-v="${n}"`, B[k] === n, n)).join('');
+  const row = (label, inner) => `<div class="food-row bot-row"><span>${label}</span>${inner}</div>`;
+  const lv = BOTS.LEVELS.map(l => chip('botlv', `data-v="${l}"`, prog.botLv === l, T('lv_' + l))).join('');
+  const foods = FOOD_IDS.map(f => chip('foefood', `data-food="${f}"`, B.foeFood === f, T('food_' + f))).join('');
+  return `<div class="bot-set"><p class="eyebrow">${T('botTitle')}</p>` +
+    (vs ? row(T('botMates'), nums('mate', 1)) + row(T('botFoes'), nums('foe', 2)) + (B.foe ? row(T('foeCart'), foods) : '')
+      : row(T('botHelpers'), nums('coop', 3))) +
+    row(T('botLevel'), lv) + `<p class="sub">${T(vs ? 'botNoteVs' : 'botNote')}</p></div>`;
+}
+function setBotOpt(k, v) {
+  if (k === 'lv') { if (BOTS.LEVELS.includes(v)) prog.botLv = v; }
+  else if (k === 'foeFood') { if (FOODS[v]) prog.bots.foeFood = v; }
+  else { const max = { coop: 3, mate: 1, foe: 2 }[k], n = Number(v); if (max != null && n >= 0 && n <= max) prog.bots[k] = n; }
+  save();
+  if (mode === 'host') { sendLobby(); renderLobby(); return; }
+  roster = soloRoster(); renderIntro();
 }
 
 /* ---------- Phòng chờ ---------- */
@@ -116,21 +152,27 @@ function renderLobby() {
   if ($('#lobby').hidden) return;
   const code = mode === 'host' && room ? room.code : lobbyCode;
   $('#lobbyCode').textContent = code || '·····';
-  const tags = r => (r.pid === me ? `<em>${T('you')}</em>` : '') + (r.pid === 'h' ? `<em class="host">${T('hostTag')}</em>` : '');
+  const host = mode === 'host';
+  const tags = r => (r.pid === me ? `<em>${T('you')}</em>` : '') + (r.pid === 'h' ? `<em class="host">${T('hostTag')}</em>` : '') +
+    (r.bot ? `<em class="bot">${T('botTag')}</em>` + (host ? `<button type="button" class="rm-bot" data-ui="rmBot" data-pid="${esc(r.pid)}" aria-label="${T('rmBot')}">×</button>` : '') : '');
+  const addRow = (col, team) => (host && roster.length < 4
+    ? `<li class="empty"><i style="--pc:${col}"></i><button type="button" class="add-bot" data-ui="addBot" data-team="${team}">${T('addBot')}</button></li>`
+    : `<li class="empty"><i style="--pc:${col}"></i><span>—</span></li>`);
   $$('[data-rm]').forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.rm === GMODE)); b.disabled = mode !== 'host'; });
   $('#roomMaps').hidden = GMODE !== 'versus';
   $$('[data-vm]', $('#roomMaps')).forEach(b => { b.setAttribute('aria-pressed', String(b.dataset.vm === VSMAP)); b.disabled = mode !== 'host'; });
   if (GMODE === 'versus') {
     const me0 = roster.find(r => r.pid === me);
-    // mỗi đội chọn xe: người trong đội bấm được, người đội kia chỉ xem
+    // mỗi đội chọn xe: người trong đội bấm được, người đội kia chỉ xem; đội chỉ có bot thì chủ phòng chọn
+    const canPick = tm => (me0 && me0.team === tm) || (host && roster.some(r => r.team === tm) && roster.filter(r => r.team === tm).every(r => r.bot));
     const pickFood = tm => `<span class="food-pick"><em>${T('teamCart')}</em>${FOOD_IDS.map(f =>
-      `<button type="button" class="fchip" data-ui="food" data-food="${f}" aria-pressed="${TEAM_FOOD[tm] === f}"${me0 && me0.team === tm ? '' : ' disabled'}>${T('food_' + f)}</button>`).join('')}</span>`;
+      `<button type="button" class="fchip" data-ui="food" data-team="${tm}" data-food="${f}" aria-pressed="${TEAM_FOOD[tm] === f}"${canPick(tm) ? '' : ' disabled'}>${T('food_' + f)}</button>`).join('')}</span>`;
     // chia 2 đội, mỗi đội tối đa 2 người
     $('#lobbyList').innerHTML = [0, 1].map(tm => {
       const list = roster.filter(r => r.team === tm);
       const rows = [0, 1].map(i => {
         const r = list[i];
-        if (!r) return `<li class="empty"><i style="--pc:${TEAMCOL[tm]}"></i><span>—</span></li>`;
+        if (!r) return addRow(TEAMCOL[tm], tm);
         return `<li><i style="--pc:${TEAMCOL[tm]}"></i><span>${esc(r.name)}</span>${tags(r)}</li>`;
       }).join('');
       return `<li class="team-head" style="--pc:${TEAMCOL[tm]}">${T('team' + tm)}${pickFood(tm)}</li>${rows}`;
@@ -142,12 +184,17 @@ function renderLobby() {
   } else {
     $('#lobbyList').innerHTML = [0, 1, 2, 3].map(s => {
       const r = roster.find(x => x.slot === s);
-      if (!r) return `<li class="empty"><i style="--pc:${PCOL[s]}"></i><span>—</span></li>`;
+      if (!r) return addRow(PCOL[s], -1);
       return `<li><i style="--pc:${PCOL[s]}"></i><span>${esc(r.name)}</span>${tags(r)}</li>`;
     }).join('');
     $('#btnTeam').hidden = true;
     $('#lobbyNote').textContent = '';
   }
+  // độ khó bot (chủ phòng chọn, người khác xem)
+  const lv = host ? prog.botLv : lobbyBotLv;
+  $('#roomBots').hidden = !roster.some(r => r.bot);
+  $('#roomBots').innerHTML = `<span>${T('botLevel')}</span>` + BOTS.LEVELS.map(l =>
+    `<button type="button" class="fchip" data-ui="botlv" data-v="${l}" aria-pressed="${lv === l}"${host ? '' : ' disabled'}>${T('lv_' + l)}</button>`).join('');
   $('#lobbyRules').innerHTML = rulesHTML();
   $('#btnStartRoom').hidden = mode !== 'host';
   $('#lobbyWait').hidden = mode === 'host';
@@ -282,7 +329,12 @@ document.addEventListener('click', e => {
     case 'vsmap': setVsMap(b.dataset.vm); break;
     case 'roomMap': if (mode === 'host') setVsMap(b.dataset.vm); break;
     case 'myfood': setMyFood(b.dataset.food); break;
-    case 'food': requestFood(b.dataset.food); break;
+    case 'food': requestFood(b.dataset.food, b.dataset.team == null ? null : Number(b.dataset.team)); break;
+    case 'botn': setBotOpt(b.dataset.k, b.dataset.v); break;
+    case 'botlv': setBotOpt('lv', b.dataset.v); break;
+    case 'foefood': setBotOpt('foeFood', b.dataset.food); break;
+    case 'addBot': addBot(Number(b.dataset.team)); break;
+    case 'rmBot': removeBot(b.dataset.pid); break;
     case 'team': requestTeamSwitch(); break;
     case 'go': if (mode === 'solo' || mode === null) { mode = 'solo'; startGame(); } break;
     case 'create': createRoom(); break;

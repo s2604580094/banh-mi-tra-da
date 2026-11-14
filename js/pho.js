@@ -197,15 +197,58 @@ function phoDecorList() {
   });
   return out;
 }
-// đồ trang trí chuyển động: xe máy chạy ở phố dưới, chim sẻ nhảy trên phố đi bộ
+// người và xe qua lại ở phố dưới (chỉ để trang trí, không va chạm):
+// xe máy có người lái (đội mũ bảo hiểm), xe đạp chở hoa (người đội nón lá), người đi bộ, người gánh hàng rong.
+// Mỗi lượt đi hết phố thì đổi người khác (ngoại hình chọn theo số lượt, không cần lưu trạng thái).
+// kind: moto / bike / walk / ganh; n = sprite xe; period = số giây đi hết phố; dir 1 = sang phải; y = hàng (chân / đáy bánh xe)
+const PHO_STREET = [
+  { kind: 'walk', period: 34, off: 0, dir: -1, y: 11.22 },
+  { kind: 'ganh', period: 52, off: 9, dir: 1, y: 11.3 },
+  { kind: 'walk', period: 41, off: 22, dir: 1, y: 11.28 },
+  // làn trên (qua vạch vàng): xe đi sang trái; làn dưới: xe đi sang phải (đi bên phải đường như ở Việt Nam)
+  { kind: 'moto', n: 'p_vespa', period: 14, off: 6, dir: -1, y: 12.45, h: 46 },
+  { kind: 'moto', n: 'p_cub', period: 19, off: 13, dir: -1, y: 12.95, h: 46 },
+  { kind: 'bike', n: 'p_flowerbike', period: 26, off: 4, dir: 1, y: 13.85, h: 50 },
+  { kind: 'moto', n: 'p_cub', period: 11, off: 0, dir: 1, y: 14.3, h: 46 },
+];
+// số giả ngẫu nhiên cố định theo (người, lượt) → chọn ngoại hình
+const phoHash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function phoPasser(i, lap, style) {
+  const r = k => phoHash(i * 31 + k, lap), pk = (a, k) => a[Math.floor(r(k) * a.length)];
+  return CHAR.custCfg({
+    skin: pk(LOOKS.skin, 1), hair: pk(LOOKS.hair, 2), shirt: pk(LOOKS.shirt, 3), helmet: pk(LOOKS.helmet, 4),
+    style: style || pk(['short', 'long', 'bun', 'cap', 'nonla'], 5), glasses: r(6) < .2,
+  });
+}
 function phoLive(now) {
-  const out = [], span = VW + 200;
-  const ride = (n, period, off, dir, y) => {
-    const k = ((now + off) % period) / period, x = dir > 0 ? -100 + k * span : VW + 100 - k * span;
-    out.push({ n, x, base: OY + y * TH, h: 46, flip: dir < 0, key: y });
-  };
-  ride('p_cub', 11, 0, 1, 12.95);
-  ride('p_vespa', 15, 6, -1, 12.5);
+  const out = [], span = VW + 240;
+  PHO_STREET.forEach((m, i) => {
+    const t = now + m.off, lap = Math.floor(t / m.period), k = (t % m.period) / m.period;
+    const x = m.dir > 0 ? -120 + k * span : VW + 120 - k * span, base = OY + m.y * TH, face = m.dir > 0 ? 2 : 1;
+    if (m.kind === 'moto' || m.kind === 'bike') {
+      const moto = m.kind === 'moto';
+      // sprite xe máy nhìn sang trái, xe đạp nhìn sang phải: lật cho đúng chiều chạy
+      const flip = moto ? m.dir > 0 : m.dir < 0, fw = m.dir > 0 ? 1 : -1;
+      const cfg = phoPasser(i, lap, moto ? 'helmet' : 'nonla'), bob = Math.sin(now * (moto ? 22 : 7) + i) * (moto ? .5 : .9);
+      out.push({
+        key: m.y, draw: ctx => {
+          ell(ctx, x, base - 1, m.h * .5, 5, 'rgba(0,0,0,.2)');
+          SPR.prop(ctx, m.n, x, base + bob * .3, m.h, flip);
+          // người lái ngồi trên yên, tay vươn ra trước cầm lái
+          CHAR.draw(ctx, cfg, x - fw * (moto ? 7 : 4), base - (moto ? 24 : 27) + bob, { dir: face, sit: true, t: now, scale: .74, held: () => {}, noShadow: true });
+        },
+      });
+    } else {
+      const ganh = m.kind === 'ganh', cfg = phoPasser(i, lap, ganh ? 'nonla' : null), sc = ganh ? .86 : .9;
+      out.push({
+        key: m.y, draw: ctx => {
+          CHAR.draw(ctx, cfg, x, base, { dir: face, walk: now * (ganh ? 6 : 8), t: now, scale: sc, held: ganh ? () => {} : null });
+          if (ganh) SPR.prop(ctx, 'p_ganh', x, base + 4 + Math.abs(Math.sin(now * 6)) * 1.5, 46, m.dir < 0);
+        },
+      });
+    }
+  });
+  // chim sẻ nhảy trên phố đi bộ
   [[11.25, 2.75, 0], [13.7, 7.55, 2]].forEach(([bx, by, ph]) => {
     const hop = Math.max(0, Math.sin(now * 5 + ph)) * 4, sway = Math.sin(now * .7 + ph) * .25;
     out.push({ n: 'p_sparrow', x: (bx + sway) * TW, base: OY + by * TH - hop, h: 16, flip: Math.sin(now * .35 + ph) < 0, key: by });
