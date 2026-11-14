@@ -238,6 +238,16 @@ body.touch #btnUse > span { font-size: clamp(9px, calc(var(--ub, 80px) * .16), 1
 .fchip[aria-pressed="true"] { background: var(--pc, var(--ink)); color: #fff; box-shadow: none; }
 .fchip:disabled { cursor: default; opacity: .8; }
 .fchip:disabled[aria-pressed="false"] { opacity: .45; }
+.bot-set { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: rgba(47, 116, 181, .08); box-shadow: inset 0 0 0 1.5px rgba(47, 116, 181, .18); }
+.bot-set .eyebrow { color: var(--blue); }
+.bot-set .sub { font-size: 12px; }
+.bot-row { justify-content: flex-start; }
+.bot-row > span { min-width: 7.5em; text-align: left; }
+.players em.bot { background: var(--blue); color: #fff; }
+.add-bot { flex: 1; text-align: left; font-size: 13px; font-weight: 800; color: var(--blue); padding: 2px 0; }
+.add-bot:hover { text-decoration: underline; }
+.rm-bot { flex: none; width: 24px; height: 24px; border-radius: 50%; font-size: 16px; font-weight: 800; line-height: 1; color: var(--ink-soft); box-shadow: inset 0 0 0 1.5px rgba(43, 33, 24, .2); }
+#roomBots { justify-content: flex-start; }
 .feat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.45; }
 .feat-list li { display: flex; gap: 8px; align-items: flex-start; }
 .fi { flex: none; width: 28px; height: 28px; display: grid; place-items: center; }

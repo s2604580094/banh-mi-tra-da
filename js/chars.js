@@ -71,7 +71,7 @@ const CHAR = (() => {
 
     g.save();
     g.translate(x, y); g.scale(s, s);
-    g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(0, 0, 13, 4.2, 0, 0, Math.PI * 2); g.fill();
+    if (!o.noShadow) { g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(0, 0, 13, 4.2, 0, 0, Math.PI * 2); g.fill(); }
     if (dir === 1) g.scale(-1, 1);          // nhìn trái = lật hình nhìn phải
     g.translate(0, bob + (sit ? 8 : 0));
     if (o.pose === 'slip') { g.translate(0, -20); g.rotate(Math.sin((o.t || 0) * 16) * .28); g.translate(0, 20); }

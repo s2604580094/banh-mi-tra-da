@@ -461,6 +461,26 @@ Object.assign(I18N.ja, {
   custVip: 'VIPのお客', custFake: 'ニセのお客（自分のチーム）',
 });
 
+/* ---------- Bot luyện tập (cả 2 chế độ) ---------- */
+Object.assign(I18N.vi, {
+  solo: 'Chơi 1 mình / với bot', soloVs: 'Luyện tập với bot',
+  botTitle: 'Bot luyện tập', botHelpers: 'Bot phụ bếp:', botMates: 'Bot cùng đội:', botFoes: 'Bot đội bạn:', foeCart: 'Xe đội bạn:',
+  botLevel: 'Độ khó bot:', lv_easy: 'Dễ', lv_normal: 'Vừa', lv_hard: 'Khó',
+  botNote: 'Bot tự nướng bánh, kẹp nhân, phục vụ, dọn bàn và rửa bát cùng bạn.',
+  botNoteVs: 'Bot tự nấu và phục vụ. Bot Vừa và Khó còn ra chợ giành đồ hiếm; bot Khó hay rung chuông gọi khách giả và ném vỏ chuối.',
+  addBot: '+ Thêm bot', rmBot: 'Bỏ bot', botTag: 'bot',
+  help7: '<b>Bot luyện tập:</b> bấm <b>Chơi 1 mình / với bot</b>, chọn số bot và độ khó (Dễ / Vừa / Khó). Trong phòng online, chủ phòng bấm <b>+ Thêm bot</b> ở chỗ còn trống.',
+});
+Object.assign(I18N.ja, {
+  solo: 'ひとり／ボットと遊ぶ', soloVs: 'ボットと練習',
+  botTitle: '練習ボット', botHelpers: 'お手伝いボット：', botMates: '味方ボット：', botFoes: '相手ボット：', foeCart: '相手の屋台：',
+  botLevel: 'ボットの強さ：', lv_easy: 'やさしい', lv_normal: 'ふつう', lv_hard: 'つよい',
+  botNote: 'ボットがパンを焼き、具をはさみ、配膳、片付け、皿洗いまで一緒にやります。',
+  botNoteVs: 'ボットが自分で料理して配膳。「ふつう」「つよい」は市場のレア食材を取りに行き、「つよい」はニセVIPのベルやバナナの皮もよく使います。',
+  addBot: '＋ボット', rmBot: 'ボットを外す', botTag: 'ボット',
+  help7: '<b>練習ボット：</b><b>ひとり／ボットと遊ぶ</b>を押して、ボットの数と強さ（やさしい／ふつう／つよい）を選ぶ。オンラインの部屋では、ホストが空いている枠の<b>＋ボット</b>を押す。',
+});
+
 const Lang = (() => {
   let cur = 'ja';
   // lấy câu theo khóa, điền {biến}

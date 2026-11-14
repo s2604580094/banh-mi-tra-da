@@ -24,6 +24,13 @@ prog.gmode = prog.gmode === 'versus' ? 'versus' : 'coop';
 prog.vsWins = prog.vsWins || 0;
 prog.vsMap = prog.vsMap === 'quan' ? 'quan' : 'pho';                       // bản đồ Bếp Chiến: phố cổ / 2 quán
 prog.food = FOODS[prog.food] ? prog.food : 'banhmi';                       // xe mình hay chọn: bánh mì / xôi / bún chả
+// bot luyện tập: số bot (Cùng bán: phụ bếp; Bếp Chiến: cùng đội / đội bạn), món của đội bạn, độ khó (dùng cả ở phòng online)
+{
+  const B = prog.bots && typeof prog.bots === 'object' ? prog.bots : {};
+  const n = (v, max, d) => (Number.isInteger(v) && v >= 0 && v <= max ? v : d);
+  prog.bots = { coop: n(B.coop, 3, 1), mate: n(B.mate, 1, 1), foe: n(B.foe, 2, 2), foeFood: FOODS[B.foeFood] ? B.foeFood : 'banhmi' };
+  prog.botLv = BOTS.LEVELS.includes(prog.botLv) ? prog.botLv : 'normal';
+}
 const charCfg = () => ({ ...CHAR.DEF, ...(prog.char || {}) });
 
 /* ---------- Chế độ chơi: 'coop' (Cùng bán) hoặc 'versus' (Bếp Chiến) ---------- */
@@ -193,7 +200,9 @@ function resetView() { disp = {}; floats.length = 0; lastFx = 0; finished = fals
 function startGame() {          // máy chủ phòng hoặc chơi 1 mình
   resetView();
   applyMode(GMODE);
+  if (mode === 'solo') roster = soloRoster();
   ENG.create(roster);
+  BOTS.start(roster, prog.botLv);
   V = ENG.S;
   const p = V.players[me];
   local = { x: p.x, y: p.y, dir: p.dir, mv: 0 };
@@ -239,7 +248,11 @@ function onHostMsg(id, m) {
   if (!m || typeof m !== 'object') return;
   if (m.t === 'hello') {
     if (playing) return room.send(id, { t: 'deny', why: 'errStarted' });
-    if (roster.length >= 4) return room.send(id, { t: 'deny', why: 'errFull' });
+    if (roster.length >= 4) {                       // phòng đủ 4: người thật vào thay 1 bot
+      const bot = roster.slice().reverse().find(r => r.bot);
+      if (!bot) return room.send(id, { t: 'deny', why: 'errFull' });
+      roster = roster.filter(r => r !== bot);
+    }
     const slot = [0, 1, 2, 3].find(s => !roster.some(r => r.slot === s));
     const team = roster.filter(r => r.team === 0).length <= roster.filter(r => r.team === 1).length ? 0 : 1;
     roster.push({ pid: id, name: String(m.name || '?').slice(0, 12), cfg: cleanCfg(m.cfg), slot, team });
@@ -266,7 +279,22 @@ function onLeave(id) {
   if (playing) ENG.removePlayer(id);
   sendLobby(); renderLobby();
 }
-function sendLobby() { if (room) roster.forEach(r => { if (r.pid !== 'h') room.send(r.pid, { t: 'lobby', roster, you: r.pid, code: room.code, gm: GMODE, vm: VSMAP, foods: TEAM_FOOD }); }); }
+function sendLobby() { if (room) roster.forEach(r => { if (r.pid !== 'h' && !r.bot) room.send(r.pid, { t: 'lobby', roster, you: r.pid, code: room.code, gm: GMODE, vm: VSMAP, foods: TEAM_FOOD, bl: prog.botLv }); }); }
+// chủ phòng thêm / bớt bot vào chỗ trống (Cùng bán: tối đa 4 người; Bếp Chiến: mỗi đội tối đa 2)
+function addBot(team) {
+  if (mode !== 'host' || playing || roster.length >= 4) return;
+  const vs = GMODE === 'versus', tm = team === 1 ? 1 : 0;
+  if (vs && roster.filter(r => r.team === tm).length >= 2) return;
+  const slot = [0, 1, 2, 3].find(s => !roster.some(r => r.slot === s));
+  const bal = roster.filter(r => r.team === 0).length <= roster.filter(r => r.team === 1).length ? 0 : 1;   // Cùng bán: chia đều để đổi sang Bếp Chiến vẫn hợp lệ
+  roster.push(BOTS.make(roster, vs ? tm : bal, slot));
+  sendLobby(); renderLobby();
+}
+function removeBot(pid) {
+  if (mode !== 'host' || playing) return;
+  roster = roster.filter(r => !(r.bot && r.pid === pid));
+  sendLobby(); renderLobby();
+}
 // đổi món của 1 đội (người trong đội đó bấm). Máy chủ giữ danh sách, gửi lại cho cả phòng
 function setTeamFood(team, food) {
   if (!FOODS[food] || (team !== 0 && team !== 1)) return;
@@ -286,6 +314,7 @@ function onClientMsg(m) {
   switch (m.t) {
     case 'lobby':
       me = m.you; roster = m.roster; lobbyCode = m.code;
+      if (BOTS.LEVELS.includes(m.bl)) lobbyBotLv = m.bl;
       if (Array.isArray(m.foods) && m.foods.join() !== TEAM_FOOD.join()) {
         TEAM_FOOD = m.foods.map(f => (FOODS[f] ? f : 'banhmi'));
         if (!playing) menuBackdrop();
@@ -316,6 +345,7 @@ function onHostGone() {
 function leaveRoom() {
   if (room) { try { room.close(); } catch (e) { /* đã đóng */ } }
   room = null; mode = null; roster = []; playing = false; finished = false;
+  BOTS.stop();
   toMenu();
 }
 
@@ -343,6 +373,7 @@ function step(dt) {
   const p = S.players[me];
   if (p && !(p.stun > 0)) { p.x = local.x; p.y = local.y; p.dir = local.dir; p.mv = local.mv; }
   if (p) p.hold = h;
+  BOTS.update(dt);                       // bot luyện tập (chỉ chạy ở máy chủ / khi chơi 1 mình)
   ENG.update(dt);
   V = S;
   processFx(S.fx);

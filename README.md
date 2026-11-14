@@ -4,6 +4,8 @@ Web game nấu ăn: bạn và tối đa 3 người bạn nhập vai chủ quán 
 - **Cùng bán:** cả nhóm chung một quán, nướng bánh, phục vụ khách mang về và khách ăn tại quán, rửa bát, tính chung điểm.
 - **Bếp Chiến (2v2):** hai đội đối đầu, tranh khách và nguyên liệu hiếm ở chợ giữa, ném vỏ chuối, rung chuông VIP giả. Có 2 bản đồ: **Phố cổ** (hai xe đẩy ở hai bên vỉa hè phố cổ Hà Nội) và **Hai quán** (hai bếp đối diện nhau).
 
+Ở cả 2 chế độ đều chơi được với **bot luyện tập** (chơi 1 mình hoặc thêm bot vào phòng online).
+
 HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên điện thoại / máy tính bảng chơi bằng điều khiển ảo (cầm ngang hay dọc đều được). Có 2 ngôn ngữ: tiếng Nhật (mặc định) và tiếng Việt.
 
 ## Điều khiển
@@ -55,7 +57,7 @@ HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên �
 ## Bếp Chiến Hỗn Loạn (2v2)
 Ở menu chọn tab **Bếp Chiến**. Đội nhiều điểm hơn sau 3 phút thắng.
 - **Bản đồ:** chọn **Phố cổ** hoặc **Hai quán** ở menu (chơi online thì chủ phòng chọn trong phòng chờ).
-  - **Phố cổ:** hai xe đẩy của hai đội ở hai bên vỉa hè đối diện nhau, giữa là phố đi bộ với bàn ghế nhựa cho khách. Xung quanh có nhà ống mái ngói, cột điện dây chằng chịt, đèn lồng, xe máy chạy ngang, gánh hàng rong, chim sẻ.
+  - **Phố cổ:** hai xe đẩy của hai đội ở hai bên vỉa hè đối diện nhau, giữa là phố đi bộ với bàn ghế nhựa cho khách. Xung quanh có nhà ống mái ngói, cột điện dây chằng chịt, đèn lồng, chim sẻ. Phố dưới có người qua lại: xe máy có người lái (đội mũ bảo hiểm, xe đi bên phải đường), cô bán hoa đội nón lá đạp xe, người đi bộ, người gánh hàng rong.
   - **Hai quán:** bản đồ cũ, mỗi đội một bếp có tường và 2 cửa.
 - **Món của đội:** mỗi đội tự chọn bán **bánh mì**, **xôi** hoặc **bún chả** (ở menu, hoặc bấm chip món trên đầu cột đội mình trong phòng chờ). Khách chỉ gọi món của những đội đang có mặt; trà đá dùng chung.
   - **Xôi:** lấy xôi ở tủ kính → hấp trong chõ → thêm ruốc, lạp xưởng, đậu xanh, hành phi, trứng. Món: xôi xéo, xôi trứng, xôi lạp xưởng; VIP: xôi gà ta, xôi xá xíu.
@@ -69,6 +71,16 @@ HTML, CSS, JavaScript thuần. Trên máy tính chơi bằng bàn phím, trên �
 - **Chuông VIP giả:** rung chuông trong bếp mình (hồi 20 giây). Đội bạn mang món tới khách giả thì mất món, đội rung chuông +10.
 - **Giờ cao điểm (30 giây cuối):** khách đến dồn dập, mất điện 2 lần, sàn bếp trôi như băng chuyền khoảng 7 giây (giữa chừng đổi chiều), khay nguyên liệu trong cả hai bếp bị đảo chỗ.
 - **Trừ điểm:** sai món −8, đồ cháy −3, vứt đồ ăn −3.
+
+## Bot luyện tập
+Bấm **Chơi 1 mình / với bot** (Bếp Chiến: **Luyện tập với bot**). Màn giới thiệu có ô **Bot luyện tập**:
+- **Cùng bán:** chọn 0–3 **bot phụ bếp**.
+- **Bếp Chiến:** chọn 0–1 **bot cùng đội** và 0–2 **bot đội bạn** (ví dụ 2v2 đủ người, hoặc 1 mình đấu 1–2 bot), chọn **xe đội bạn** (bánh mì / xôi / bún chả).
+- **Độ khó:** Dễ (đi chậm, nghĩ lâu), Vừa, Khó (nhanh, giành đồ hiếm ở chợ, hay rung chuông gọi khách giả và ném vỏ chuối, không bị khách giả lừa).
+
+Bot làm như người chơi: lấy bánh, nướng, kẹp nhân, thái, rán, pha trà, mang ra cho khách; ở Cùng bán còn dọn bàn và rửa bát. Bot ưu tiên khách đã được mang 1 phần (Cùng bán: khách đủ món mới trả tiền), dọn đồ cháy trên lò và không đụng vào đồ bạn đang làm.
+
+**Trong phòng online:** chủ phòng bấm **+ Thêm bot** ở chỗ còn trống, bấm **×** để bỏ bot, chọn **Độ khó bot** cho cả phòng. Đội chỉ có bot thì chủ phòng chọn món cho đội đó. Phòng đã đủ 4 mà có người vào thì người đó thay chỗ 1 bot. Bot chạy trên máy chủ phòng.
 
 ## Chơi online 2–4 người
 1. Một người chọn chế độ (Cùng bán hoặc Bếp Chiến), bấm **Tạo phòng online** và gửi **mã phòng** (5 ký tự) cho bạn bè. Chủ phòng vẫn đổi được chế độ trong phòng chờ.
@@ -86,7 +98,7 @@ Mở thư mục bằng VS Code → chuột phải `index.html` → **Open with L
 
 ## Cập nhật lên GitHub (cách tải file qua web)
 1. Vào repo → **Add file → Upload files** → kéo **toàn bộ nội dung bên trong** thư mục `banh-mi-tra-da` vào → **Commit changes**. File trùng tên sẽ được thay bằng bản mới.
-2. Kiểm tra thư mục `js` trên GitHub có đủ 15 file: `data.js`, `i18n.js`, `art.js`, `sprites.js`, `chars.js`, `world.js`, `pho.js`, `sim.js`, `versus.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; có thư mục `icons` (4 ảnh), thư mục `img` (ảnh nền menu và thư mục `spr` 83 hình) cùng file `manifest.webmanifest` ở trang chính.
+2. Kiểm tra thư mục `js` trên GitHub có đủ 16 file: `data.js`, `i18n.js`, `art.js`, `sprites.js`, `chars.js`, `world.js`, `pho.js`, `sim.js`, `versus.js`, `bots.js`, `net.js`, `main.js`, `panels.js`, `layout.js`, `touch.js`, `screens.js`; có thư mục `icons` (4 ảnh), thư mục `img` (ảnh nền menu và thư mục `spr` 83 hình) cùng file `manifest.webmanifest` ở trang chính.
 3. (Nên làm) Xóa các file cũ không còn dùng nếu vẫn còn: `vendor.js`, `game.js`, `ui.js`. Cách xóa: bấm vào file → nút `…` → **Delete file** → **Commit changes**.
 
 Sau 1–2 phút, link GitHub Pages sẽ chạy bản mới.
@@ -106,9 +118,10 @@ banh-mi-tra-da/
     ├── sprites.js  nạp hình chi tiết trong img/spr và dùng thay hình SVG
     ├── chars.js    vẽ nhân vật 2.5D 4 hướng + lựa chọn ngoại hình, mốc mở khóa
     ├── world.js    bản đồ, va chạm, vẽ quán theo góc nhìn chéo
-    ├── pho.js      bản đồ Phố cổ: vỉa hè, nhà ống, xe đẩy, xe máy, dây điện, đèn lồng
+    ├── pho.js      bản đồ Phố cổ: vỉa hè, nhà ống, xe đẩy, dây điện, đèn lồng, người và xe qua lại
     ├── sim.js      luật chơi Cùng bán: khách, nấu, phục vụ, rửa bát, điểm, cấp độ
     ├── versus.js   luật chơi Bếp Chiến 2v2: chợ, thớt, vỏ chuối, chuông giả, giờ cao điểm
+    ├── bots.js     bot luyện tập: tìm đường, chọn việc, 3 mức Dễ / Vừa / Khó   ← chỉnh độ khó bot ở bảng LV
     ├── net.js      kết nối phòng online (PeerJS) và chế độ thử ?local
     ├── main.js     bàn phím, vòng lặp, HUD, đồng bộ giữa các máy, bố cục theo màn hình
     ├── panels.js   thẻ "Đang cầm" và "Trước mặt" (chữ to)
@@ -122,5 +135,7 @@ banh-mi-tra-da/
 - **Món của đội:** khay nguyên liệu, nguyên liệu hiếm và thực đơn từng món nằm ở `FOODS` trong `data.js`; công thức có trường `food`.
 - **Độ khó Bếp Chiến:** sửa `VS` trong `data.js` (thời gian, tốc độ khách, hồi chuông, số vỏ chuối, thưởng VIP…).
 - **Độ khó:** sửa `GAME` và `COOK` trong `data.js`.
+- **Độ khó bot:** sửa bảng `LV` đầu file `bots.js` (tốc độ đi, thời gian nghỉ giữa 2 thao tác, tỉ lệ ra chợ, rung chuông, ném vỏ chuối).
+- **Người qua lại ở Phố cổ:** sửa `PHO_STREET` trong `pho.js` (loại: xe máy / xe đạp / đi bộ / gánh hàng, làn đường, tốc độ).
 - **Thêm món:** thêm vào `RECIPES` (tên ghi cả `vi` và `ja`), rồi thêm món đó vào `GAME.unlocks`.
 - **Dữ liệu lưu:** lưu trong `localStorage` của trình duyệt (khóa `banhmi-trada-v3`). Nhân vật và kỷ lục của bản cũ vẫn được giữ.
