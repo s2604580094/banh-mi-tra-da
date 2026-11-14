@@ -133,5 +133,13 @@ const ART = (() => {
       `${brows}${eyes}${specs}${mouth}${top}</svg>`;
   }
 
-  return { bread, ing, egg, cup, jug, basket, trash, lock, customer, peel, bananas, bell, board };
+  // xôi / bún chả khi chưa có ảnh: bát đơn giản (raw = gạo / chả sống, toast = đã chín, burnt = cháy)
+  function dish(f, st = 'toast') {
+    const fill = f === 'xoi' ? { raw: '#F4F1E6', toast: '#FFFDF5', burnt: '#5A4636' }[st] : { raw: '#F0A7A0', toast: '#9A5A2E', burnt: '#2E2219' }[st];
+    return `<svg class="bread" viewBox="0 0 100 54" aria-hidden="true"><path d="M14 22H86Q84 50 50 50Q16 50 14 22Z" fill="#F4F1EA" stroke="#8E9AA6" stroke-width="2.5"/><ellipse cx="50" cy="22" rx="36" ry="9" fill="${fill}" stroke="rgba(0,0,0,.25)"/></svg>`;
+  }
+  // nem (chả giò): sống / rán vàng / cháy
+  const nem = st => `<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="14" width="30" height="13" rx="6.5" fill="${st === 'raw' ? '#F3E3C8' : st === 'burnt' ? '#3A2A20' : '#D8902E'}" stroke="#7A4E1E" stroke-width="1.4"/></svg>`;
+
+  return { bread, ing, egg, cup, jug, basket, trash, lock, customer, peel, bananas, bell, board, dish, nem };
 })();

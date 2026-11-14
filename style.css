@@ -228,7 +228,16 @@ body.touch #btnUse > span { font-size: clamp(9px, calc(var(--ub, 80px) * .16), 1
 .mode-tab.vs[aria-pressed="true"] { background: linear-gradient(90deg, #D9443A 50%, #2F74B5 50%); color: #fff; }
 .mode-tab:disabled { cursor: default; opacity: .75; }
 .mode-desc { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); text-align: center; }
-.players li.team-head { background: transparent; padding: 6px 2px 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--pc); }
+.players li.team-head { background: transparent; padding: 6px 2px 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--pc); flex-wrap: wrap; gap: 6px; }
+/* chọn bản đồ / loại xe (Bếp Chiến) */
+.modes.maps .mode-tab { padding: 6px; font-size: 11.5px; }
+.food-row, .food-pick { display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: wrap; font-size: 12px; font-weight: 800; color: var(--ink-soft); }
+.food-pick { margin-left: auto; letter-spacing: 0; text-transform: none; }
+.food-pick em { font-style: normal; font-size: 11px; color: var(--ink-soft); }
+.fchip { padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; color: var(--ink); background: #fff; box-shadow: inset 0 0 0 2px rgba(43, 33, 24, .18); }
+.fchip[aria-pressed="true"] { background: var(--pc, var(--ink)); color: #fff; box-shadow: none; }
+.fchip:disabled { cursor: default; opacity: .8; }
+.fchip:disabled[aria-pressed="false"] { opacity: .45; }
 .feat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.45; }
 .feat-list li { display: flex; gap: 8px; align-items: flex-start; }
 .fi { flex: none; width: 28px; height: 28px; display: grid; place-items: center; }

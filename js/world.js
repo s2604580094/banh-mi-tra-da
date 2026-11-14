@@ -1,5 +1,6 @@
 /* world.js — bản đồ quán nhìn chéo 2.5D: va chạm, chọn khu đang đứng gần, vẽ sàn, quầy, đồ ăn, khách.
-   Có 2 bản đồ: "coop" (Cùng bán) và "versus" (Bếp Chiến 2 đội). useMap() đổi bản đồ.
+   Có 3 bản đồ: "coop" (Cùng bán), "versus" (Bếp Chiến: 2 quán đối diện) và "pho" (Bếp Chiến: 2 xe đẩy ở phố cổ).
+   useMap() đổi bản đồ.
    Toạ độ thế giới tính bằng ô (x cột, y hàng; y là chân nhân vật). */
 const TW = 48, TH = 40, OY = 100;
 let UIZ = 1;                                                        // phóng to chữ trên canvas khi màn hình nhỏ (layout.js đặt)
@@ -22,10 +23,20 @@ const STATION = {
 const BIN = { p: 'pate', q: 'cha', u: 'dua', r: 'rau', o: 'ot' };
 const WINDOW_COLS = [2, 4, 6];                                      // 3 chỗ khách mang về đứng ngoài quầy (Cùng bán)
 const isInteract = (x, y) => STATION[tileAt(x, y)] !== undefined;
+// Bếp Chiến: mỗi đội chọn 1 loại xe (bánh mì / xôi / bún chả). Cùng bán luôn là bánh mì.
+let TEAM_FOOD = ['banhmi', 'banhmi'];
+const foodOfTeam = t => (MAPCFG && MAPCFG.vs && t >= 0 && TEAM_FOOD[t]) || 'banhmi';
+const foodAtX = x => foodOfTeam(teamOfX(x));
+const binIng = (ch, x) => FOODS[foodAtX(x)].bins[ch] || BIN[ch];          // khay nhân ở cột x đựng gì
+const ROLLS = FOOD_IDS.map(f => FOODS[f].roll);                           // nguyên liệu phải thái (chả lụa, lạp xưởng, đu đủ)
+// khóa ảnh của món chính: bánh mì giữ khóa cũ ('b' + trạng thái + nhân), món khác 'f:món:trạng thái:nhân'
+const baseKey = (f, st, ings) => (!f || f === 'banhmi' ? 'b' + st + ings.slice().sort().join('-') : `f:${f}:${st}:${ings.slice().sort().join('-')}`);
+const friedKey = (f, st) => (f === 'buncha' ? 'nem-' : 'egg-') + st;     // đồ rán trên chảo: trứng / nem
 const isWalk = (x, y) => '.,c:'.includes(tileAt(x, y));
 const usesIng = (k, recipes) => recipes.some(r => RECIPES[r].type === 'food' && RECIPES[r].ings.includes(k));
 // khu chưa mở theo thực đơn hiện tại
 function isLocked(ch, recipes) {
+  if (MAPCFG && MAPCFG.vs) return false;            // Bếp Chiến: mở hết
   if (ch === 'E' || ch === 'P') return !usesIng('trung', recipes);
   if (ch === 'L') return !recipes.includes('trachanh');
   if (ch === 'Z') return !usesIng('cha', recipes);
@@ -34,7 +45,7 @@ function isLocked(ch, recipes) {
 }
 const winOfCol = col => Math.max(0, Math.min(2, Math.floor((col - 1.5) / 2)));
 // đội sở hữu ô (Bếp Chiến): 0 = Đội Đỏ (trái), 1 = Đội Xanh (phải), -1 = khu chung
-const teamOfX = x => (MAPCFG && MAPCFG.name === 'versus' ? (x <= 9 ? 0 : x >= 15 ? 1 : -1) : -1);
+const teamOfX = x => (MAPCFG && MAPCFG.vs ? (x <= 9 ? 0 : x >= 15 ? 1 : -1) : -1);
 
 const MAPS = {
   coop: {
@@ -44,13 +55,19 @@ const MAPS = {
     tiled: (x, y) => x > 10 && y > 1 && y < 9,
   },
   versus: {
-    name: 'versus', map: MAP_VS,
+    name: 'versus', vs: true, map: MAP_VS,
     seat: (x, y) => ({ x, y: y - 1 }),                              // khách ngồi ghế phía trên bàn, quay mặt xuống
     tall: (x, y) => y <= 1,                                         // tường ngăn bếp – vỉa hè thấp để nhìn rõ cửa
     tiled: (x, y) => x >= 10 && x <= 14,
   },
+  pho: {
+    name: 'pho', vs: true, pho: true, map: MAP_PHO,
+    seat: (x, y) => ({ x, y: y - 1 }),
+    tall: (x, y) => y === 0 || ((x === 0 || x === COLS - 1) && y <= 9),   // mặt tiền nhà ống cao, mép vỉa hè thấp
+    tiled: (x, y) => x >= 10 && x <= 14,
+  },
 };
-let TABLES = [], TABLE_AT = {}, BLOCKS = [], DOOR_POSTS = [];
+let TABLES = [], TABLE_AT = {}, BLOCKS = [], DOOR_POSTS = [], PHO_DECOR = [];
 function useMap(name) {
   MAPCFG = MAPS[name] || MAPS.coop;
   MAP_CUR = MAPCFG.map; OVR = null;
@@ -75,6 +92,7 @@ function useMap(name) {
       }
     });
   }
+  PHO_DECOR = MAPCFG.pho ? phoDecorList() : [];
   floorCanvas = null;
 }
 
@@ -98,7 +116,7 @@ function movePlayer(p, ix, iy, dt) {
 // dirSign: 0 = sàn đứng yên, 1 = chiều đầu (làn trên và dưới đẩy ra cửa), -1 = đổi chiều.
 const SLIDE_LANES = { 2: 1, 3: 1, 5: -1, 6: -1, 8: 1, 9: 1 };
 function slideVX(x, y, dirSign) {
-  if (!dirSign || !MAPCFG || MAPCFG.name !== 'versus') return 0;
+  if (!dirSign || !MAPCFG || !MAPCFG.vs) return 0;
   const tx = Math.floor(x), ty = Math.floor(y), team = teamOfX(tx), lane = SLIDE_LANES[ty];
   if (team < 0 || !lane || tileAt(tx, ty) !== '.') return 0;
   return lane * (team === 0 ? 1 : -1) * dirSign * VS.slideSpeed;
@@ -179,14 +197,15 @@ function drawItem(ctx, it, cx, cy, s = 1) {
   if (it.k === 'b') {
     if (it.w === 'plate') plate(ctx, 0, -2, 21);
     const st = it.s === 'raw' ? 'raw' : it.s === 'burnt' ? 'burnt' : 'toast';
-    pic(ctx, 'b' + st + it.i.slice().sort().join('-'), () => ART.bread(st, it.i), -19, it.w === 'plate' ? -24 : -21, 38, 20.5);
+    pic(ctx, baseKey(it.f, st, it.i), () => (!it.f || it.f === 'banhmi' ? ART.bread(st, it.i) : ART.dish(it.f, st)), -19, it.w === 'plate' ? -24 : -21, 38, 20.5);
     if (it.w === 'paper') {
       ctx.beginPath(); ctx.moveTo(-17, -13); ctx.lineTo(17, -13); ctx.lineTo(14, 1); ctx.lineTo(-14, 1); ctx.closePath();
       ctx.fillStyle = '#C9A06A'; ctx.fill(); ctx.strokeStyle = '#8C6436'; ctx.lineWidth = 1.2; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-6, -13); ctx.lineTo(-4, 1); ctx.moveTo(7, -13); ctx.lineTo(5, 1); ctx.strokeStyle = '#A9814E'; ctx.stroke();
     }
   } else if (it.k === 'e') {
-    if (it.s === 'raw') pic(ctx, 'egg-raw', () => ART.ing('trung'), -10, -20, 20, 20);
+    if (it.f === 'buncha') pic(ctx, friedKey('buncha', it.s), () => ART.nem(it.s), -15, -22, 30, 24);
+    else if (it.s === 'raw') pic(ctx, 'egg-raw', () => ART.ing('trung'), -10, -20, 20, 20);
     else pic(ctx, 'egg-' + it.s, () => ART.egg(it.s === 'fried' ? 'ready' : it.s === 'burnt' ? 'burnt' : 'cooking'), -14, -22, 28, 26);
   } else if (it.k === 'c') {
     if (it.g === 'glass') pic(ctx, 'glass' + it.f + (it.l ? 'L' : ''), () => ART.cup(it.f ? 1 : 0, it.l), -9, -26, 18, 25);
@@ -203,6 +222,7 @@ function drawItem(ctx, it, cx, cy, s = 1) {
 let floorCanvas = null;
 const KITCHEN_TILE = { '-1': ['#E6DFCF', '#D9D0BC'], 0: ['#F6DCD3', '#ECC8BC'], 1: ['#D8E6F2', '#C5D6E6'] };
 function buildFloor() {
+  if (MAPCFG.pho) return buildFloorPho();
   const c = document.createElement('canvas');
   c.width = VW * 2; c.height = VH * 2;
   const g = c.getContext('2d');
@@ -256,6 +276,7 @@ function buildFloor() {
 
 /* ---------- Khối (tường, quầy, bàn) ---------- */
 function blockStyle(ch, x, y) {
+  if (MAPCFG.pho) { const st = blockStylePho(ch, x, y); if (st) return st; }
   if (ch === '#') return { h: MAPCFG.tall(x, y) ? 46 : 20, top: '#A8782F', front: '#E3B04B', front2: '#C9922F' };
   if (ch === 'M') return { h: 20, top: '#E9D6A8', front: '#3E9B48', front2: '#2A6E32' };
   if (ch === 'K') return { h: 20, top: '#E9ECEE', front: '#8E5A35', front2: '#6C4024' };
@@ -269,6 +290,7 @@ function blockStyle(ch, x, y) {
 }
 function drawBlock(ctx, b, V, now, target) {
   const ch = tileAt(b.x, b.y), st = blockStyle(ch, b.x, b.y), x0 = b.x * TW, y0 = OY + b.y * TH, H = st.h;
+  if (st.skip) return;                              // phố cổ: hàng nhà trên cùng đã vẽ sẵn trong nền
   if (st.glass) ctx.globalAlpha = .4;
   const top = y0 - H, cx = x0 + TW / 2, cy = top + TH / 2;
   // mặt trước
@@ -285,6 +307,18 @@ function drawBlock(ctx, b, V, now, target) {
   ctx.fillStyle = st.top; ctx.fillRect(x0, top, TW, TH);
   ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1; ctx.strokeRect(x0 + .5, top + .5, TW - 1, TH - 1);
   ctx.globalAlpha = 1;
+  if (st.stripe) {                                   // phố cổ: thân xe đẩy màu đội, sọc trắng, bánh xe
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(x0, y0 + TH - H + 5, TW, 3);
+    if (st.wheel) {
+      const wx = st.wheel < 0 ? x0 + 9 : x0 + TW - 9, wy = y0 + TH + 1;
+      ell(ctx, wx, wy, 8, 8, '#2B2118', '#120C0A', 1.5); ell(ctx, wx, wy, 3.2, 3.2, '#C9CFD6');
+    }
+  }
+  if (st.house) {                                    // phố cổ: cửa cuốn nhà ống ở mặt trước
+    ctx.fillStyle = 'rgba(70,52,40,.55)'; ctx.fillRect(x0 + 8, y0 + TH - H + 8, TW - 16, H - 8);
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1;
+    for (let k = y0 + TH - H + 12; k < y0 + TH; k += 4) { ctx.beginPath(); ctx.moveTo(x0 + 8, k); ctx.lineTo(x0 + TW - 8, k); ctx.stroke(); }
+  }
   if (ch === '#' && MAPCFG.name === 'versus') {
     const team = teamOfX(b.x), wood = (yy, hh) => {
       const gw = ctx.createLinearGradient(0, yy, 0, yy + hh);
@@ -305,11 +339,23 @@ function drawBlock(ctx, b, V, now, target) {
   // nội dung từng khu
   switch (ch) {
     case 'B':
+      if (MAPCFG.pho) { breadCabinet(ctx, x0, top, team); break; }        // tủ kính bánh mì trên xe đẩy
+      if (foodAtX(b.x) !== 'banhmi') {                                        // xe xôi / bún chả: khay nguyên liệu chính
+        ctx.fillStyle = '#9A6A3A'; rr(ctx, x0 + 4, top + 8, TW - 8, TH - 14, 4); ctx.fill();
+        for (let i = 0; i < 2; i++) pic(ctx, FOODS[foodAtX(b.x)].rawKey, () => ART.dish(foodAtX(b.x), 'raw'), x0 + 3 + i * 8, top + 4 + i * 8, 34, 20);
+        break;
+      }
       if (SPR.pic(ctx, 'basket', x0 + 1, top - 12, TW - 2, TH + 10)) break;   // rổ bánh mì
       ctx.fillStyle = '#9A6A3A'; rr(ctx, x0 + 4, top + 8, TW - 8, TH - 14, 4); ctx.fill();
       for (let i = 0; i < 3; i++) pic(ctx, 'braw', () => ART.bread('raw'), x0 + 4 + i * 4, top + 6 + i * 6, 34, 18);
       break;
     case 'G': {
+      if (foodAtX(b.x) === 'xoi' && SPR.ready('x_steamer')) {                // xe xôi: nồi chõ hấp xôi
+        SPR.draw(ctx, 'x_steamer', x0 + 2, top - 22, TW - 4, TH + 20);
+        for (let i = 0; i < 2; i++) { const k = (now * .6 + i / 2) % 1; ell(ctx, cx - 6 + i * 12, top - 18 - k * 16, 3 + k * 4, 3 + k * 4, `rgba(255,255,255,${.5 * (1 - k)})`); }
+        if (ts.item) cookerItem(ctx, ts, cx, top + 6, now);
+        break;
+      }
       ctx.fillStyle = '#2A1D17'; ctx.fillRect(x0 + 3, top + 3, TW - 6, TH - 6);
       const glow = ctx.createRadialGradient(cx, cy + 8, 2, cx, cy + 8, 24);
       glow.addColorStop(0, 'rgba(255,138,42,.95)'); glow.addColorStop(1, 'rgba(194,65,12,0)');
@@ -327,6 +373,7 @@ function drawBlock(ctx, b, V, now, target) {
       break;
     case 'E':
       ctx.fillStyle = '#D9C29A'; rr(ctx, x0 + 5, top + 6, TW - 10, TH - 12, 4); ctx.fill();
+      if (foodAtX(b.x) === 'buncha') { for (let i = 0; i < 3; i++) pic(ctx, 'nem-raw', () => ART.nem('raw'), x0 + 4 + (i % 2) * 12, top + 4 + i * 7, 28, 16); break; }
       for (let i = 0; i < 4; i++) pic(ctx, 'egg-raw', () => ART.ing('trung'), x0 + 6 + (i % 2) * 17, top + 4 + Math.floor(i / 2) * 13, 17, 17);
       break;
     case 'J': pic(ctx, 'jug', ART.jug, cx - 18, top - 18, 36, 38); break;
@@ -373,7 +420,7 @@ function drawBlock(ctx, b, V, now, target) {
     }
     case 'Z':
       ctx.fillStyle = '#C3CAD1'; rr(ctx, x0 + 4, top + 4, TW - 8, TH - 8, 5); ctx.fill();
-      pic(ctx, 'ing-cha', () => ART.ing('cha'), cx - 15, top + 5, 30, 30);
+      { const rk = FOODS[foodAtX(b.x)].roll; pic(ctx, 'ing-' + rk, () => ART.ing(rk), cx - 15, top + 5, 30, 30); }
       pic(ctx, 'board', ART.board, x0 + TW - 18, top + 20, 16, 16);
       break;
     case 'N': {
@@ -420,8 +467,9 @@ function drawBlock(ctx, b, V, now, target) {
     }
     default:
       if (BIN[ch]) {
+        const g = binIng(ch, b.x);
         ctx.fillStyle = '#C3CAD1'; rr(ctx, x0 + 4, top + 4, TW - 8, TH - 8, 5); ctx.fill();
-        pic(ctx, 'ing-' + BIN[ch], () => ART.ing(BIN[ch]), cx - 15, top + 5, 30, 30);
+        pic(ctx, 'ing-' + g, () => ART.ing(g), cx - 15, top + 5, 30, 30);
       }
   }
   if (ts.item && (ch === '=')) drawItem(ctx, ts.item, cx, cy + 10);
@@ -499,7 +547,7 @@ function drawBubbleVS(ctx, c, x, y, side, myTeam) {
   c.items.forEach((it, i) => {
     const R = RECIPES[it.id], ix = bx + 5 + i * cw + cw / 2;
     if (R.type === 'food') {
-      drawItem(ctx, { k: 'b', s: 'toast', i: R.ings }, ix, by + 30, 1.05);
+      drawItem(ctx, { k: 'b', s: 'toast', i: R.ings, f: R.food }, ix, by + 30, 1.05);
       R.ings.forEach((k, j) => pic(ctx, 'ing-' + k, () => ART.ing(k), ix - 22 + (j % 3) * 15, by + 33 + Math.floor(j / 3) * 14, 14, 14));
     } else {
       drawItem(ctx, { k: 'c', g: 'plastic', f: 1, l: R.lemon }, ix, by + 56, 1.35);
@@ -540,6 +588,7 @@ function drawDark(ctx, V, disp, amount) {
   Object.keys(V.players).forEach(id => { const d = disp[id]; if (d) hole(d.x * TW / 2, (OY + d.y * TH - 30) / 2, 62); });
   if (V.market) Object.values(V.market).forEach(m => { if (m.it) hole(m.x * TW / 2 + 12, (OY + m.y * TH) / 2, 26); });
   DOOR_POSTS.forEach(d => { const L = lanternPos(d); hole(L.x / 2, (L.y + 30) / 2, 24); });   // đèn lồng ở cửa vẫn sáng
+  if (MAPCFG.pho) PHO_LAMPS.forEach(([lx, ly, r]) => hole(lx / 2, ly / 2, r));               // phố cổ: đèn lồng, đèn dây
   g.globalCompositeOperation = 'source-over';
   ctx.drawImage(darkCv, 0, 0, VW, VH);
 }
@@ -599,13 +648,17 @@ function drawWorld(ctx, V, disp, me, target, now) {
   V.custs.forEach(c => { const d = disp['c' + c.id]; if (d) list.push({ y: d.y + (c.state === 'eat' || (c.state === 'wait' && c.type === 'dine') ? .05 : 0), c }); });
   if (V.floor) V.floor.forEach(f => list.push({ y: f.y - .2, f }));
   DOOR_POSTS.forEach(d => list.push({ y: d.key, d }));
+  if (MAPCFG.pho) phoLive(now).concat(PHO_DECOR).forEach(dc => list.push({ y: dc.key, dc }));
   list.sort((a, b) => a.y - b.y || (a.b ? 0 : 1) - (b.b ? 0 : 1) || (a.o || 0) - (b.o || 0));
   for (const e of list) {
     if (e.b) {
       drawBlock(ctx, e.b, V, now, target);
       if (!vs && e.b.x === 19 && e.b.y === 1) shopSign(ctx);
       if (!vs && e.b.x === 6 && e.b.y === 9) takeSign(ctx);
-      if (vs && e.b.x === COLS - 1 && e.b.y === 0) vsSigns(ctx);
+      if (vs && !MAPCFG.pho && e.b.x === COLS - 1 && e.b.y === 0) vsSigns(ctx);
+    } else if (e.dc) {
+      const d = e.dc;
+      if (d.draw) d.draw(ctx, now); else SPR.prop(ctx, d.n, d.x, d.base, d.h, d.flip);
     } else if (e.d) {
       drawDoorPost(ctx, e.d, now);
     } else if (e.f) {
@@ -646,6 +699,7 @@ function drawWorld(ctx, V, disp, me, target, now) {
     ell(ctx, sx, sy, 10, 3.5, 'rgba(0,0,0,.2)');
     ctx.save(); ctx.translate(sx, sy - 18 - lift); ctx.rotate(f.d * 4); drawItem(ctx, f.it, 0, 10, .8); ctx.restore();
   });
+  if (MAPCFG.pho) phoWires(ctx, now);
   if (V.dark > 0) drawDark(ctx, V, disp, Math.min(1, V.dark));
   // lớp trên cùng: bong bóng gọi món, tên người chơi
   V.custs.forEach(c => {

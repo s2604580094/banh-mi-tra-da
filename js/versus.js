@@ -9,9 +9,12 @@ const SIMV = (() => {
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const foodsOf = ids => ids.filter(id => RECIPES[id].type === 'food');
   const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
-  const fits = (ings, ids) => foodsOf(ids).some(id => ings.every(x => RECIPES[id].ings.includes(x)));
+  const foodIs = (id, f) => (RECIPES[id].food || 'banhmi') === (f || 'banhmi');
+  const fits = (ings, ids, f) => foodsOf(ids).some(id => foodIs(id, f) && ings.every(x => RECIPES[id].ings.includes(x)));
   const cap = s => s[0].toUpperCase() + s.slice(1);
-  const ALL = [...VS.menu, ...VS.vipMenu];
+  const DRINKS = ['trada', 'trachanh'];
+  let MENU = [], VIPS = [];                                       // món thường / món VIP của các xe có trong trận
+  const foodAt = x => (S.food[teamOfX(x)] || 'banhmi');
   const STREET_Y = 11.65, MIDX = 12.5;
   let S = null, fxId = 0, uid = 0;
 
@@ -23,12 +26,16 @@ const SIMV = (() => {
     roster.forEach(r => n[r.team === 1 ? 1 : 0]++);
     const boost = [1, 1];
     if (n[0] && n[1] && n[0] !== n[1]) boost[n[0] < n[1] ? 0 : 1] = VS.soloBoost;
+    // món của từng đội (chọn ở phòng chờ); chỉ những xe có người chơi mới mở bán
+    const food = [0, 1].map(t => (FOODS[TEAM_FOOD[t]] ? TEAM_FOOD[t] : 'banhmi'));
+    const present = [...new Set([0, 1].filter(t => n[t]).map(t => food[t]))];
+    MENU = present.flatMap(f => FOODS[f].menu); VIPS = present.flatMap(f => FOODS[f].rare);
     const ev = { dark1: [rand(26, 28), 0], shuffle: rand(15, 18), dark2: [rand(8, 10), 0] };
     ev.dark1[1] = ev.dark1[0] - 6; ev.dark2[1] = ev.dark2[0] - 4.5;
     // sàn trôi: bắt đầu ngay sau lần mất điện đầu, khay đổi chỗ xảy ra giữa lúc sàn đang trôi
     ev.slide = [ev.dark1[1] - 1.5, ev.dark1[1] - 1.5 - VS.slideLen];
     S = {
-      mode: 'versus', time: VS.duration, phase: 'play', recipes: ALL.slice(), players: {}, tiles: {}, market: {},
+      mode: 'versus', time: VS.duration, phase: 'play', recipes: [...MENU, ...DRINKS, ...VIPS], food, players: {}, tiles: {}, market: {},
       floor: [], fly: [], custs: [], tables: TABLES.map(() => ({ cust: null })),
       teams: [0, 1].map(() => ({ score: 0, served: 0, items: 0, vip: 0, rare: 0, tricks: 0, slips: 0, wrong: 0, burnt: 0, penalties: 0, combo: 0, comboMax: 0 })),
       n, boost, bellCd: [0, 0], peelCd: [0, 0], dark: 0, rush: false, ovr: null, ev, shuffled: false, darkOn: 0, slide: 0,
@@ -62,7 +69,7 @@ const SIMV = (() => {
     fx({ k: 'float', x, y, key: 'p' + cap(kind), vars: { n }, cls: 'loss' });
   }
   const reach = (p, x, y) => Math.hypot(p.x - x - .5, p.y - y - .5) <= 2.3;
-  const ingOf = it => (it.k === 'e' && it.s === 'fried' ? 'trung' : it.k === 'i' && it.cut ? it.g : null);
+  const ingOf = it => (it.k === 'e' && it.s === 'fried' ? FOODS[it.f || 'banhmi'].fry : it.k === 'i' && it.cut ? it.g : null);
   const isToast = it => it && it.k === 'b' && it.s === 'toast';
   function wrong(p, x, y, dropItem = true) {
     const T = S.teams[p.team];
@@ -75,11 +82,11 @@ const SIMV = (() => {
   function addTo(bread, ing, p, x, y) {
     bread.i.push(ing);
     sfx('place'); act(p, 'ing');
-    if (!fits(bread.i, S.recipes)) return false;
+    if (!fits(bread.i, S.recipes, bread.f)) return false;
     return true;
   }
   function dishOf(h) {
-    if (isToast(h)) { const r = foodsOf(S.recipes).find(id => sameSet(RECIPES[id].ings, h.i)); return r || null; }
+    if (isToast(h)) { const r = foodsOf(S.recipes).find(id => foodIs(id, h.f) && sameSet(RECIPES[id].ings, h.i)); return r || null; }
     if (h.k === 'c' && h.f) return h.l ? 'trachanh' : 'trada';
     return null;
   }
@@ -137,10 +144,10 @@ const SIMV = (() => {
     const h = p.held, ts = S.tiles[key], T = S.teams[p.team];
     if (isLocked(ch, S.recipes)) return say(pid, 'tLocked');
     switch (ch) {
-      case 'B': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'b', s: 'raw', i: [], w: '' }; sfx('place'); return act(p);
-      case 'E': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'e', s: 'raw' }; sfx('place'); return act(p);
+      case 'B': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'b', s: 'raw', i: [], w: '', f: foodAt(x) }; sfx('place'); return act(p);
+      case 'E': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'e', s: 'raw', f: foodAt(x) }; sfx('place'); return act(p);
       case 'C': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'c', g: 'plastic', f: 0, l: false }; sfx('place'); return act(p);
-      case 'Z': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'i', g: 'cha', cut: false }; sfx('place'); return act(p);
+      case 'Z': if (h) return say(pid, 'tHandsFull'); p.held = { k: 'i', g: FOODS[foodAt(x)].roll, cut: false }; sfx('place'); return act(p);
       case 'N':
         if (h) return say(pid, 'tHandsFull');
         if (S.peelCd[p.team] > 0) return say(pid, 'tPeelWait', { n: Math.ceil(S.peelCd[p.team]) });
@@ -169,9 +176,10 @@ const SIMV = (() => {
       case 'T': return serve(p, pid, TABLE_AT[key], x, y);
       default:
         if (BIN[ch]) {
-          if (!isToast(h)) return say(pid, 'tBakeFirst');
-          if (h.i.includes(BIN[ch])) return say(pid, 'tHasIng', { ing: '@ing:' + BIN[ch] });
-          if (!addTo(h, BIN[ch], p, x, y)) wrong(p, x + .5, y);
+          const g = binIng(ch, x);
+          if (!isToast(h)) return say(pid, 'tCookFirst_' + (h && h.k === 'b' ? h.f || 'banhmi' : foodAt(x)));
+          if (h.i.includes(g)) return say(pid, 'tHasIng', { ing: '@ing:' + g });
+          if (!addTo(h, g, p, x, y)) wrong(p, x + .5, y);
         }
     }
   }
@@ -180,9 +188,10 @@ const SIMV = (() => {
     if (ts.item) {
       if (!h) { p.held = ts.item; ts.item = null; ts.t = 0; ts.phase = ''; sfx('place'); return act(p); }
       if (kind === 'e' && isToast(h) && ts.item.s === 'fried') {
-        if (h.i.includes('trung')) return say(pid, 'tHasIng', { ing: '@ing:trung' });
+        const g = ingOf(ts.item);
+        if (h.i.includes(g)) return say(pid, 'tHasIng', { ing: '@ing:' + g });
         ts.item = null; ts.t = 0; ts.phase = '';
-        if (!addTo(h, 'trung', p, x, y)) wrong(p, x + .5, y);
+        if (!addTo(h, g, p, x, y)) wrong(p, x + .5, y);
         return;
       }
       return say(pid, 'tHandsFull');
@@ -237,7 +246,7 @@ const SIMV = (() => {
     const h = p.held;
     if (!h) return say(pid, 'tNothing');
     const free = h.k === 'peel' || h.s === 'burnt' || (h.k === 'c' && !h.f) || (h.k === 'b' && h.s === 'raw' && !h.i.length) ||
-      (h.k === 'e' && h.s === 'raw') || (h.k === 'i' && h.g === 'cha' && !h.cut);
+      (h.k === 'e' && h.s === 'raw') || (h.k === 'i' && ROLLS.includes(h.g) && !h.cut);
     if (!free) penalty(p.team, 'waste', x + .5, y);
     p.held = null;
     sfx('trash'); act(p, 'trash');
@@ -408,11 +417,11 @@ const SIMV = (() => {
     let ids;
     if (vip || fake != null) {
       const onMarket = Object.values(S.market).map(m => m.it && m.it.g).filter(Boolean);
-      const main = onMarket.length && Math.random() < .7 ? (onMarket[0] === 'bo' ? 'bo' : 'nam') : pick(VS.vipMenu);
-      ids = Math.random() < .4 ? [main, pick(['trada', 'trachanh'])] : [main];
+      const main = onMarket.length && Math.random() < .7 ? onMarket[0] : pick(VIPS);
+      ids = Math.random() < .4 ? [main, pick(DRINKS)] : [main];
     } else {
       const k = 1 - S.time / VS.duration;
-      ids = Math.random() < .25 + .3 * k ? [pick(['pate', 'thit', 'trung']), pick(['trada', 'trachanh'])] : [pick(VS.menu)];
+      ids = Math.random() < .25 + .3 * k ? [pick(MENU), pick(DRINKS)] : [pick(Math.random() < .25 ? DRINKS : MENU)];
     }
     const max = fake != null ? VS.fakeLife : (vip ? VS.vipPatience : VS.patience * (.8 + .2 * S.time / VS.duration)) + (ids.length - 1) * 8;
     const left = Math.random() < .5;
@@ -474,7 +483,7 @@ const SIMV = (() => {
       const free = stalls.filter(m => !m.it && !(m.warn > 0));
       if (busy < 2 && free.length) {
         const m = pick(free);
-        m.warn = VS.marketWarn; m.pend = pick(VS.vipMenu);
+        m.warn = VS.marketWarn; m.pend = pick(VIPS);
       }
     }
   }
@@ -578,7 +587,7 @@ const SIMV = (() => {
   }
   function snap() {
     return {
-      mode: 'versus', time: S.time, phase: S.phase, recipes: S.recipes, result: S.result,
+      mode: 'versus', time: S.time, phase: S.phase, recipes: S.recipes, food: S.food, result: S.result,
       players: S.players, tiles: S.tiles, market: S.market, floor: S.floor,
       fly: S.fly.map(f => ({ it: f.it, x: f.x, y: f.y, d: f.d, max: f.max })),
       tables: S.tables, teams: S.teams, bellCd: S.bellCd, peelCd: S.peelCd, dark: S.dark, rush: S.rush, slide: S.slide, ovr: S.ovr, fx: S.fx,

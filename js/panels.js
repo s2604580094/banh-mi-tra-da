@@ -26,8 +26,25 @@ function breadSvg(st, ings, w) {
   const paper = w === 'paper' ? '<path d="M8 32H92L86 62H14Z" fill="#C9A06A" stroke="#8C6436" stroke-width="2"/><path d="M34 32L32 62M66 32L68 62" stroke="#A9814E" stroke-width="2"/>' : '';
   return `<svg viewBox="0 0 100 66" aria-hidden="true">${plate}${inner}${paper}</svg>`;
 }
+// món chính theo loại xe: bánh mì vẽ bằng ổ bánh, xôi / bún chả dùng hình món
+function baseSvg(f, st, ings, w) {
+  if (!f || f === 'banhmi') return breadSvg(st, ings, w);
+  return ART.dish(f, st, ings).replace('<svg class="bread" viewBox="0 0 100 54"', '<svg viewBox="0 -4 100 62"');
+}
+// tên trạng thái theo loại xe: 'raw' / 'cooked'
+const foodText = (f, kind) => (!f || f === 'banhmi' ? T(kind === 'raw' ? 'itRawBread' : 'itToast') : T((kind === 'raw' ? 'itRaw_' : 'itCooked_') + f));
+// tên khu theo loại xe của bếp đó (vd. lò than → nồi chõ ở xe xôi)
+function stationName(ch, x) {
+  const f = foodAtX(x), k = STATION[ch] + '_' + f;
+  return f !== 'banhmi' && Lang.t(k) !== k ? T(k) : T(STATION[ch]);
+}
+function stationNote(ch, x) {
+  const f = foodAtX(x), k = STATION_NOTE[ch] + '_' + f;
+  return f !== 'banhmi' && Lang.t(k) !== k ? T(k) : T(STATION_NOTE[ch]);
+}
 function itemIcon(it) {
-  if (it.k === 'b') return breadSvg(it.s === 'raw' ? 'raw' : it.s === 'burnt' ? 'burnt' : 'toast', it.i, it.w);
+  if (it.k === 'b') return baseSvg(it.f, it.s === 'raw' ? 'raw' : it.s === 'burnt' ? 'burnt' : 'toast', it.i, it.w);
+  if (it.k === 'e' && it.f === 'buncha') return ART.nem(it.s);
   if (it.k === 'e') return it.s === 'raw' ? ART.ing('trung') : ART.egg(it.s === 'fried' ? 'ready' : 'burnt');
   if (it.k === 'c') return it.g === 'glass' ? ART.cup(it.f ? 1 : 0, it.l) : plasticSvg(it.f, it.l);
   if (it.k === 'i') return ART.ing(it.cut ? it.g + '_cut' : it.g);
@@ -41,13 +58,14 @@ const TEA_ICON = () => ART.cup(1, false);
 /* ---------- Mô tả đồ đang cầm ---------- */
 function describe(it) {
   const d = { title: '', sub: '', chips: '', stat: null, note: '' };
-  if (!it) { d.title = T('handsEmpty'); d.note = T('hintEmpty'); return d; }
+  if (!it) { const P = V && V.players && V.players[me]; const f = P && MAPCFG && MAPCFG.vs ? foodOfTeam(P.team) : 'banhmi'; d.title = T('handsEmpty'); d.note = T(f === 'banhmi' ? 'hintEmpty' : 'hintEmpty_' + f); return d; }
   if (it.k === 'b') {
-    if (it.s === 'raw') { d.title = T('itRawBread'); d.note = T('noteRawBread'); return d; }
+    const f = it.f || 'banhmi';
+    if (it.s === 'raw') { d.title = foodText(f, 'raw'); d.note = T(f === 'banhmi' ? 'noteRawBread' : 'noteRaw_' + f); return d; }
     if (it.s === 'burnt') { d.title = T('itBurnt'); d.stat = ['bad', T('noteBurnt')]; return d; }
-    d.title = T('itToast');
+    d.title = foodText(f, 'cooked');
     d.sub = V.mode === 'versus' ? '' : T(it.w === 'plate' ? 'onPlate' : it.w === 'paper' ? 'inPaper' : 'notWrapped');
-    const foods = V.recipes.filter(r => RECIPES[r].type === 'food');
+    const foods = V.recipes.filter(r => RECIPES[r].type === 'food' && (RECIPES[r].food || 'banhmi') === f);
     const match = foods.find(r => sameIngs(RECIPES[r].ings, it.i));
     let miss = [];
     if (match) {
@@ -66,8 +84,9 @@ function describe(it) {
     return d;
   }
   if (it.k === 'e') {
-    if (it.s === 'raw') { d.title = T('itRawEgg'); d.note = T('noteRawEgg'); }
-    else if (it.s === 'fried') { d.title = T('itFried'); d.note = T('noteFried'); }
+    const nem = it.f === 'buncha';
+    if (it.s === 'raw') { d.title = T(nem ? 'itRawNem' : 'itRawEgg'); d.note = T(nem ? 'noteRawNem' : 'noteRawEgg'); }
+    else if (it.s === 'fried') { d.title = T(nem ? 'itFriedNem' : 'itFried'); d.note = T(nem ? 'noteFriedNem' : 'noteFried'); }
     else { d.title = T('itBurnt'); d.stat = ['bad', T('noteBurnt')]; }
     return d;
   }
@@ -113,7 +132,7 @@ function orderHTML(c) {
   return `<div class="ohead">${tag}<span class="pbar"><i></i></span></div>` +
     c.items.map(it => {
       const R = RECIPES[it.id], food = R.type === 'food';
-      const icon = food ? breadSvg('toast', R.ings, vs ? '' : dine ? 'plate' : 'paper') : (dine ? ART.cup(1, R.lemon) : plasticSvg(1, R.lemon));
+      const icon = food ? baseSvg(R.food, 'toast', R.ings, vs ? '' : dine ? 'plate' : 'paper') : (dine ? ART.cup(1, R.lemon) : plasticSvg(1, R.lemon));
       const need = vs ? (R.vip ? '+' + VS.vipBonus + ' VIP' : '') : T(food ? (dine ? 'needPlate' : 'needPaper') : (dine ? 'needGlass' : 'needPlastic'));
       const chips = food ? ingChips(R.ings) : R.lemon ? ingChips(['chanh']) : '';
       return `<div class="oline${it.done ? ' done' : ''}"><span class="pic">${icon}</span>` +
@@ -128,7 +147,7 @@ function lookHTML(key) {
   const head = name => `<div class="ph">${isTouch ? '' : `<kbd>${useKey ? 'E' : 'Space'}</kbd>`}<b>${esc(name)}</b></div>`;
   if (!key) return { html: `<div class="ph">${T('lookTitle')}</div><p class="pnote">${T('lookNone')}</p>`, cust: null };
   const [x, y] = key.split(',').map(Number), ch = tileAt(x, y);
-  const name = BIN[ch] ? ingName(BIN[ch]) : T(STATION[ch]);
+  const name = BIN[ch] ? ingName(binIng(ch, x)) : stationName(ch, x);
   const note = (t, hint) => `<p class="pnote${hint ? ' hint' : ''}">${esc(t)}</p>`, stat = (c, t) => `<div class="pstat ${c}">${esc(t)}</div>`;
   let body = '', cust = null;
   if (isLocked(ch, V.recipes)) body = stat('bad', T('lockedSt'));
@@ -151,7 +170,8 @@ function lookHTML(key) {
     const ts = V.tiles[key];
     if (!ts || !ts.item) body = note(T('ckEmpty'));
     else {
-      const ph = ts.phase, msg = ph === 'cook' ? ['warn', T('ckCook')] : ph === 'ready' ? ['ok', T(ch === 'G' ? 'ckReadyBread' : 'ckReadyEgg')]
+      const rk = (ch === 'G' ? 'ckReadyBread' : 'ckReadyEgg'), rf = rk + '_' + foodAtX(x);
+      const ph = ts.phase, msg = ph === 'cook' ? ['warn', T('ckCook')] : ph === 'ready' ? ['ok', Lang.t(rf) !== rf ? T(rf) : T(rk)]
         : ph === 'warn' ? ['bad', T('ckWarn')] : ['bad', T('ckBurnt')];
       body = `<div class="pmain"><span class="pic">${itemIcon(ts.item)}</span>${stat(msg[0], msg[1])}</div>`;
     }
@@ -175,8 +195,8 @@ function lookHTML(key) {
     body = note(T('sinkInfo', { n })) + (n ? stat('warn', T(isTouch ? 'sinkHoldTouch' : 'sinkHoldKey')) : '');
   } else if (ch === 'R') body = stat(V.plates ? 'ok' : 'bad', T('cleanPlates', { n: V.plates }));
   else if (ch === 'V') body = stat(V.glasses ? 'ok' : 'bad', T('cleanGlasses', { n: V.glasses }));
-  else if (BIN[ch]) body = note(T('noteBin', { ing: ingName(BIN[ch]).toLowerCase() }), true);
-  else if (STATION_NOTE[ch]) body = note(T(STATION_NOTE[ch]), true);
+  else if (BIN[ch]) { const f = foodAtX(x); body = note(T(f === 'banhmi' ? 'noteBin' : 'noteBin_' + f, { ing: ingName(binIng(ch, x)).toLowerCase() }), true); }
+  else if (STATION_NOTE[ch]) body = note(stationNote(ch, x), true);
   return { html: head(name) + body, cust };
 }
 
